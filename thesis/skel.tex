@@ -1,0 +1,62 @@
+\documentclass[a4paper,10pt]{article}
+
+% Packages
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+%\usepackage[danish]{babel}
+\usepackage{hyperref}
+\usepackage{graphicx}
+\usepackage{amsmath}
+\usepackage{subcaption}
+\usepackage{minted}
+\usepackage{xcolor}
+\usepackage{tikz}
+\usepackage{pgfplots}
+\usepackage{tabularx}
+\graphicspath{{images/}}
+\pgfplotsset{compat=1.13}
+
+% Basic layout:
+\setlength{\textwidth}{175mm}
+\setlength{\textheight}{250mm}
+\setlength{\parindent}{0mm}
+\setlength{\parskip}{\parsep}
+\setlength{\headheight}{0mm}
+\setlength{\headsep}{5mm}
+\setlength{\hoffset}{-10mm}
+\setlength{\voffset}{-15mm}
+\setlength{\footskip}{15mm}
+\setlength{\oddsidemargin}{0mm}
+\setlength{\topmargin}{0mm}
+\setlength{\evensidemargin}{0mm}
+
+% Has to be included after messing with layout
+\usepackage{thesis-style}
+
+% Blackboard bold
+\newcommand{\NN}{\mathbb{N}}
+\newcommand{\ZZ}{\mathbb{Z}}
+\newcommand{\QQ}{\mathbb{Q}}
+\newcommand{\RR}{\mathbb{R}}
+\newcommand{\EE}{\mathbb{E}}
+\newcommand{\PP}{\mathbb{P}}
+\newcommand{\FF}{\mathbb{F}}
+\newcommand{\CC}{\mathbb{C}}
+
+% Declare
+\DeclareMathOperator{\sinc}{sinc}
+
+% Colors
+\definecolor{bblue}{HTML}{4F81BD}
+\definecolor{rred}{HTML}{C0504D}
+\definecolor{ggreen}{HTML}{9BBB59}
+\definecolor{ppurple}{HTML}{9F4C7C}
+
+% Misc
+\date{\today}
+\author{Mads Obitsø Thomsen <scr411>}
+
+\setStaticDate{\today}
+
+\setAuthors{Mads Obitsø Thomsen <scr411>}
+\setShortAuthors{Obitsø}

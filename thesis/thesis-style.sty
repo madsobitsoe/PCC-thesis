@@ -1,0 +1,210 @@
+\ProvidesPackage{thesis-style}
+
+%%%
+% Parse options
+\newcommand\babelopts{english}
+\DeclareOption{danish}{\renewcommand\babelopts{danish}}
+\ProcessOptions\relax
+%%%
+
+%%%
+% Langauge
+\PassOptionsToPackage{utf8}{inputenc}
+\RequirePackage{inputenc}
+\PassOptionsToPackage{\babelopts}{babel}%
+\RequirePackage{babel}
+%%%
+
+%%%
+% Font, computer modern (i.e. the default, but specifically)
+\PassOptionsToPackage{T1}{fontenc}
+\RequirePackage{fontenc}
+\RequirePackage{lmodern}
+%\RequirePackage{mathpazo}
+%%%
+
+%%%
+% Mathematics
+\RequirePackage{amssymb}
+\RequirePackage{amsmath}
+\RequirePackage{amsthm}
+
+\everymath{\displaystyle}
+%%%
+
+%%%
+% LaTeX macro utilities
+\RequirePackage{xparse}
+%%%
+
+%%%
+% Colours
+\PassOptionsToPackage{usenames,dvipsnames}{xcolor}
+%%%
+
+%%%
+% Code
+\RequirePackage{alltt}
+\PassOptionsToPackage{cache=false,outputdir=aux}{minted}
+\RequirePackage{minted}
+%%%
+
+%%%
+% Graphics
+\RequirePackage{graphicx}
+%%%
+
+%%%
+% Citations
+\RequirePackage{cite}
+%%%
+
+%%%
+% Enumerations
+\RequirePackage{paralist} % inparaenum
+\RequirePackage{enumitem}
+%%%
+
+%%%
+% Colours
+\RequirePackage{color}
+%%%
+
+
+%%%
+% Links and metadata (in PDFs).
+\RequirePackage{url}
+\def\UrlBreaks{\do\/\do-}
+\RequirePackage{breakurl}
+% \PassOptionsToPackage{hyphens}{url}
+\PassOptionsToPackage{backref=page}{hyperref} % backrefs in references
+\PassOptionsToPackage{colorlinks=true}{hyperref} % color, not box the links
+\PassOptionsToPackage{pdftex}{hyperref} % THIS IS PDF!
+\RequirePackage{hyperref}
+\hypersetup
+{
+  breaklinks=true
+  % bookmarksnumbered,
+  % linkcolor=RoyalBlue,
+  % anchorcolor=RoyalBlue,
+  % citecolor=RoyalBlue,
+  % urlcolor=RoyalBlue,
+  % pdfstartview={FitV},
+  % pdfdisplaydoctitle
+}
+% \hypersetup is used later as well.
+%%%
+
+
+\RequirePackage{tikz}
+
+
+%%%
+% Header
+\newcommand{\course}{\empty}
+\newcommand{\setCourse}[1]{%
+	\renewcommand{\course}{#1}%
+}
+\setCourse{[]}
+
+\newcommand{\assignment}{\empty}
+\newcommand{\setAssignment}[1]{%
+	\renewcommand{\assignment}{#1}\title{#1}\hypersetup{pdftitle={#1}}%
+}
+\setAssignment{[assignment not setup]}
+
+\newcommand{\staticDate}{\empty}
+\newcommand{\setStaticDate}[1]{%
+	\renewcommand{\staticDate}{#1}\date{#1}%
+}
+\setStaticDate{[date not setup..]}
+
+\newcommand{\shortAffiliation}{\empty}
+\newcommand{\setShortAffiliation}[1]{%
+  \renewcommand{\shortAffiliation}{#1}%
+}
+\setShortAffiliation{[affiliation not setup..]}
+
+\newcommand{\affiliation}{\empty}
+\newcommand{\setAffiliation}[1]{%
+  \renewcommand{\affiliation}{#1}%
+  \setShortAffiliation{#1}
+}
+\setAffiliation{[affiliation not set up..]}
+
+\newcommand{\shortAuthors}{\empty}
+\newcommand{\setShortAuthors}[1]{%
+	\renewcommand{\shortAuthors}{#1}%
+}
+\setShortAuthors{[short authors not setup..]}
+
+\newcommand{\authors}{\empty}
+\newcommand{\setAuthors}[1]{%
+	\renewcommand{\authors}{#1}%
+	\author{#1}%
+	\hypersetup{pdfauthor={#1}}%
+  \setShortAuthors{#1}
+}
+\setAuthors{[authors not setup..]}
+
+\define@key{header}{assignment}{\setAssignment{#1}}
+\define@key{header}{date}{\setStaticDate{#1}}
+\define@key{header}{course}{\setCourse{#1}}
+\define@key{header}{affiliation}{\setAffiliation{#1}}
+\define@key{header}{shortAffiliation}{\setShortAffiliation{#1}}
+\define@key{header}{authors}{\setAuthors{#1}}
+\define@key{header}{shortAuthors}{\setShortAuthors{#1}}
+\NewDocumentCommand\header{m}{\setkeys{header}{#1}}
+%%%
+
+%%%
+% Fancy
+\RequirePackage{fancyhdr}
+\RequirePackage{lastpage}
+
+\pagestyle{fancy}
+\chead{\footnotesize\shortAffiliation\\\ }
+\lhead{\footnotesize\course\\\assignment}
+\rhead{\footnotesize\staticDate}
+\cfoot{\thepage/\pageref*{LastPage}}
+\renewcommand{\headrulewidth}{0in}
+%\renewcommand{\headsep}{40pt}
+\setlength{\headheight}{40pt}
+\addtolength{\textheight}{-40pt}
+
+\fancypagestyle{first}{%
+  \fancyhf{}%
+  \cfoot{\thepage/\pageref*{LastPage}}%
+}
+%%%
+
+%%%
+% Captions
+\PassOptionsToPackage{hang, small, bf}{caption}
+\RequirePackage{caption}
+%%%
+
+%%%
+% Title
+\RenewDocumentCommand\maketitle{}{%
+  \begin{center}%
+  \LARGE\assignment\\\vspace{0.3in}%
+  \Large\course\\%
+  \large\affiliation\\\vspace{0.2in}%
+  \normalsize\authors\\\vspace{0.2in}%
+  \normalsize\staticDate%
+  \end{center}%
+  \thispagestyle{first}%
+}
+%%%
+
+
+%%%
+% DIKU Overrides
+\setAffiliation{Department of Computer Science \\ University of Copenhagen}
+\setShortAffiliation{DIKU}
+%%%
+
+%%%
+\setCourse{PCC and eBPF}
+%%%
