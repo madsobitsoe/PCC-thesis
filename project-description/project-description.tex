@@ -1,0 +1,90 @@
+\documentclass[12pt, a4paper, titlepage, oneside]{article}
+\usepackage[margin=2cm]{geometry} % set page margins
+\usepackage{project-description}
+\header{%
+  assignment={Proof Carrying Code and eBPF},%
+  authors={Mads Dyrvig Obitsø Thomsen, scr411, \\ \texttt{dyrvig@di.ku.dk} \\ 0000-0001-8831-1687},%
+  shortAuthors={Obitsø - scr411},%
+  date={\today}%
+}
+ 
+
+\begin{document}
+\newcommand{\thetitle}{PCC and eBPF}
+\title{\thetitle}
+
+\maketitle              % typeset the header of the contribution
+
+% Abstract
+
+% Project Description
+\section*{Project Description}
+
+Extended Berkeley Packet Filters (eBPF) is both a programming language and a subsystem in the Linux kernel allowing a user process to dynamically load an eBPF program into the running kernel, have it statically verified and, if successfully verified, compiled to native code and executed in kernel space.
+
+The static verification of eBPF programs is only informally described and as the Linux kernel and especially the eBPF subsystem continually grows and evolves, so does the risk of introducing vulnerabilities. Furthermore, the static verification currently employed in the Linux kernel is necessarily conservative and might reject programs that are provably safe. 
+
+Proof Carrying Code (PCC) as presented in \cite{pcc-necula} is the idea that untrusted programs from a code producer, e.g. eBPF programs, can be accompanied by a proof of validity that can be validated according to a safety policy decided by the code consumer, e.g. the Linux kernel. 
+In theory, extending eBPF-programs to include proofs and the eBPF-subsystem to include a proof-checker would remove the need for static verification of eBPF programs. It also has a possibility of extending the expressiveness of eBPF programs, by replacing the static verification with a concept of ``if you can prove it safe, it will run''. 
+
+
+Writing PCC packet filters has already been investigated \cite{kernel-ext-necula}, by implementing filters in DEC Alpha assembly and using cBPF for performance comparisons.
+\paragraph{}
+\noindent
+In this project I want to
+\begin{itemize}
+\item Prepare a precise description of what guarantees the current in-kernel verifier provides, to be used for assessment of a proof of concept PCC architecture for eBPF. 
+\item Collect and/or construct a suite of useful eBPF programs, both verifiable and unverifiable, that exercise most of the current verifier; to be used as a baseline for assesment of proof of concept PCC architecture for eBPF. 
+\item Investigate and identify the necessary components of a PCC architecture, using an existing SMT solver that can produce proof certificates, and a corresponding certificate checker, for instance CVC5 and LFSC.
+\item Implement a verification condition generator for a subset of eBPF in Haskell.
+\item Implement a proof of concept verification condition generator for a subset of eBPF in C, to be a part of the proof of concept PCC implementation for a subset of eBPF.
+\item Modify the verification condition generator and certificate checker such that it can be embedded  in the Linux kernel.
+\item Assess the quality of the proof of concept PCC implementation as compared to the current eBPF verifier.
+\end{itemize}
+
+All in all the goal of the project is to design and implement a proof of concept for an extension of a subset of eBPF with proof carrying code and an accompanying proof checker as a kernel component.
+
+
+% Learning Objectives
+\section*{Learning Objectives}
+At the end of this project, I will be able to:
+\begin{itemize}
+\item Modify and extend the Linux kernel, in particular the eBPF subsystem.
+\item Write C code for the Linux kernel adhering to current guidelines and standards.
+\item Explain the eBPF subsystem, in particular the machine- and programming models.
+\item %Document (develop, device) the functionality of the eBPF verifier and what it guarantees.
+Develop a precise description of what guarantees the current in-kernel verifier provides, to be used for assessment of a Proof-of-Concept PCC architecture for eBPF.   
+%\item Analyze and identify problems related to untrusted code (and sandboxing?). (SPLIT OP OG SKRIV OM )
+\item Explain what Proof Carrying Code is and explain the architecture behind.
+\item Analyze and identify the requirements for embedding a certificate checker such as LFSC in the Linux kernel.
+  \item Modify non-trivial existing software such as a certificate checker and embed in the Linux kernel.
+  % the CVC5 proof-checker LFSC in the Linux kernel.
+\item Explain verification conditions and implement a verification condition generator for a subset of eBPF in Haskell and C, suitable for SMT solving.
+\item Evaluate and assess the quality of the proof of concept PCC implementation.
+\end{itemize}
+% References
+
+
+\bibliographystyle{splncs04}
+\bibliography{references}
+
+\end{document}
+
+% Delprodukt er at jeg gerne vil udarbejde en mere præcis beskrivelse af hvad verifieren garanterer
+% Det delprodukt skal så bruges til at sammenligne PoC, for at vise om PoC kan "mindst det samme" som verifieren.
+
+% "Kig på hylden"
+% SAT-solver i stedet for SMT? (fordi simplere) )
+% Måske definere et interface til en proof-checker i kernen, i stedet for at implementere en SMT(?))-solver
+% "Collect/Construct" en brugbar suite af eBPF-programmer
+% Hvilke komponenter er nødvendige for PCC? 
+
+% Som LO: "Hvad skal der til for at kunne embedde (dele) af LFSC i Linux kernen?
+% 
+% https://github.com/cvc5/LFSC
+
+% Linux med stort
+
+% ( Fjern parenteser med weeks)
+% Sidste bullet skal være en sætning.
+% Tilføj punkt om "evaluate" min løsning. Assessment of quality of blahblah
