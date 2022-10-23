@@ -23,6 +23,7 @@ dependencies:
 - base >= 4.7 && < 5
 - ebpf-tools
 - containers
+- smtLib
 ghc-options:
 - -Wall
 - -Wcompat
@@ -47,7 +48,7 @@ executables:
     - -with-rtsopts=-N
     dependencies:
     - FeBPFVCGen
-
+    - smtLib
 tests:
   FeBPFVCGen-test:
     main:                Spec.hs

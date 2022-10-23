@@ -38,6 +38,7 @@ packages:
 extra-deps:
   - github: kfl/ebpf-tools
     commit: 86792ae47319e3daf6dd5a4c3d0473abd9c16cf3
+  - smtLib-1.1
 #
 # extra-deps: []
 
