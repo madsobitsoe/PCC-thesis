@@ -2,8 +2,19 @@
 \label{subsec:featherweight_ebpf}
 Will contain definition of the subset of eBPF I will be covering and working with.
 
+
+Featherweight-eBPF is a simplified, small subset of the eBPF ISA.
+
+Main restrictions:
+\begin{itemize}
+\item Only 64-bit values and operations
+\item No jumps or branching. Only straight-line programs.
+\item Along with a pointer to the program context (``some memory'') passed to the program in \texttt{r1}, the size of that memory that is valid to read is also passed in \texttt{r2}. 
+\end{itemize}
+
+
 % TODO: Should this be in background?
-At the beginning of all programs, assume that
+At the beginning of execution of all programs, assume that
 \begin{itemize}
 \item \texttt{r1} contains \texttt{*ctx}, a pointer to "some memory".
 \item \texttt{r2} contains a 64-bit integer indicating the size of the memory pointed to by \texttt{r1}, i.e. reading bytes between \texttt{r1} and \texttt{r1+(r2-1)} are allowed
@@ -11,3 +22,8 @@ At the beginning of all programs, assume that
 \item \texttt{r0}, \texttt{r3}, \texttt{r4}, \texttt{r5}, \texttt{r6}, \texttt{r7}, \texttt{r8} and \texttt{r9} are all "uninitialized", i.e. they have an unknown value at program start. In "proper eBPF" it is invalid to read an uninitialized register. In x86\_64 assembly, i.e. "jited eBPF", it is valid (but stupid in most cases).
 
 \end{itemize}
+
+At the end of all programs, \texttt{r0} will contain the return value. 
+
+\subsubsection*{Instruction set}
+

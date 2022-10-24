@@ -1,0 +1,4 @@
+mov64 r0, 10
+mov64 r1, 2
+div64 r0, r1
+exit

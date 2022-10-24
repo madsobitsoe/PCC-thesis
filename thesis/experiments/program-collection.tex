@@ -1,0 +1,39 @@
+\subsection{Program Collection}
+\label{subsec:program_collection}
+
+Will contain the primarily synthetic programs I will be working with and basing Featherweight eBPF on.
+\newline
+For each program:
+\begin{itemize}
+    \item Why is the program relevant and what does it show/test/exercise?  
+    \item Does it verify with eBPF verifier?  (TODO: How do I translate FW-eBPF into ``real'' eBPF?)
+    \item Can CVC5 prove it safe?
+\end{itemize}
+
+\begin{table}[h]
+\begin{tabularx}{\textwidth}{|X|X|X|X|X|X|} \hline
+  \textbf{Program name} & \textbf{Reference} & \textbf{Relevance} & \textbf{Verifies with eBPF verifier} & \textbf{CVC5 can prove it} & \textbf{Relevant safety policies} \\ \hline
+  Potential Division By Zero & \ref{subsubsec:bad_div} & ? & ? & ? & No divide by zero \\ \hline
+  Safe Division & \ref{subsubsec:good_div} & ? & ? & ? & No divide by zero \\ \hline
+  XOR Initialisation & \ref{subsubsec:xor_init} & ? & ? & ? & Safe use of uninitialised registers  \\ \hline   
+\end{tabularx}
+\end{table}
+
+\subsubsection{Potential Division By Zero}
+\label{subsubsec:bad_div}
+
+\inputminted{text}{programs/bad_div.ebpf}
+
+
+\subsubsection{Safe Division}
+\label{subsubsec:good_div}
+
+\inputminted{text}{programs/good_div.ebpf}
+
+
+\subsubsection{XOR initialisation}
+\label{subsubsec:xor_init}
+
+\inputminted{text}{programs/xor_init.ebpf}
+
+
