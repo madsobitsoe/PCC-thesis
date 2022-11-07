@@ -1,3 +1,228 @@
 \subsection{VCGen}
 \label{subsec:vcgen}
 
+\subsubsection{Judgments}
+
+% \[
+% S \vdash K_1 / I / K_2 \hookrightarrow P
+% \]
+
+\[
+  (P ,\sigma) \vdash I \hookrightarrow (P',\sigma')
+\]
+
+In this judgment, the pair $(P, \sigma)$ denotes a predicate $P$ and some machine state $\sigma$, $I$ denotes some FW-eBPF instruction and the pair $(P', \sigma')$ denotes a verification condition $P'$ and resulting machine state $\sigma'$, where $P'$ is a verification condition ensuring the instruction $I$ does not violate the safety policy if $I$ is executed in the machine state $\sigma$.
+
+
+
+\subsubsection{Expressions and predicates}
+
+\begin{figure}[ht]
+  \centering
+  \begin{tabular}{lrl}
+    Uninitialised Variables & $U ::= $ & $u_0 ~|~ u_3~|~ u_4~|~ u_5~|~ u_6~|~ u_7~|~ u_8~|~ u_9 $ \\
+    Variables & $X \quad ~$ &\\
+    Expressions & $E ::= $ & $N ~ | ~ U ~ | ~ X ~ |$ \\
+              & & $E_1 + E_2 ~ | ~ E_1 - E_2 ~ | ~ E_1 ~ \mathrm{div} ~ E_2 ~ | ~ E_1 ~ \mathrm{xor} ~ E_2 ~ |$ \\
+              & & $E_1 \oplus E_2 ~ | ~ E_1 \ominus E_2 ~ | ~ E_1 ~ \oslash ~ E_2 ~ | ~ E_1 ~ \otimes ~ E_2 ~ |$ \\    
+    % & & $sel(E_1, E_2) ~|~ upd(E_1, E_2, E_3)$ \\
+    Expression Predicates & $EP ::=$ & $true ~ | ~ false ~ | ~ E_1 = E_2 ~ | E_1 \neq E_2 ~ | ~ E_1 ~ \geq ~ E_2 ~ | ~ E_1 < E_2 ~ | ~ E \not \in U$ \\
+    Predicates & $P ::=$ & $EP ~ | ~ P_1 \land P_2 ~ | ~ P_1 \implies P_2 ~ | ~ \forall X.P$ \\
+\end{tabular}    
+\end{figure}
+
+In the syntax for expressions, the symbols have the following meaning:
+
+\begin{figure}[ht]
+  \centering
+  \begin{tabular}{ll}
+    $\oplus$  & unsigned addition with 64-bit wrapping.\\
+    $\ominus$ & unsigned subtraction with 64-bit wrapping. \\
+    $\oslash$ & unsigned division with 64-bit wrapping. \\
+    $\otimes$ & xor-operation with 64-bit wrapping. \\
+    % $sel(E_1, E_2)$ & If $E_1$ describes memory state, returns the value stored in memory address $E_2$ \\
+    % $upd(E_1, E_2, E_3)$ & In mem-state $E_1$, replace $[E_2]$ with value of $E_3$. \\
+    \end{tabular}
+\end{figure}
+
+
+
+
+
+
+\subsubsection{Instruction Sequences}
+
+Elements $K_1, I$ and $K_2$ denote instructions as the following:
+
+\begin{figure}[H]
+  \centering
+  \begin{tabular}{ll}
+    Labels & $L ::= N \in \mathbb{Z}^+$ \\
+    Register & $R ::= r_0, r_1, r_2, r_3, r_4, r_5, r_6, r_7, r_8, r_9$ \\
+    Frame Pointer & $FP ::= r_{10}$ \\
+    Immediate & $IMM \in 0..2^{32}-1$ \\
+    Source & $S ::= R ~ | ~ FP ~ | ~ IMM$ \\
+    Assembly Mnemonics & $A ::= \mathrm{mov} ~ R, S ~ | ~ \mathrm{add} ~ R, S ~ | ~ \mathrm{div} ~ R, S ~ | ~ \mathrm{sub} ~ R, S ~ | ~ \mathrm{xor} ~ R, S$ \\
+    Instructions & $I ::= L ~ : ~ A$\\
+\end{tabular}    
+  % \caption{}
+  % \label{fig:instruction_sequences}
+\end{figure}
+
+A label is the zero-indexed number of the instruction in the eBPF-program.
+
+
+
+\subsubsection{Machine State}
+
+
+The machine state $\sigma$ is a collection of symbolic expressions and predicates representing the contents of the registers and memory. 
+
+The initial machine state has all registers uninitialised, except for \texttt{r1, r2} containing  respectively the context-pointer $m$ and size of memory $n$ and the frame-pointer $f$ in \texttt{r10}.
+
+\begin{figure}[ht]
+  \centering
+  \begin{tabular}{lll}
+    Initial machine state $\sigma_0=$ & $ \llbracket r_0=u_0, r_1=m, r_2 = n, r_3=u_3, r_4=u_4,$ \\
+                                      & $~ r_5=u_5, r_6=u_6, r_7=u_7, r_8=u_8, r_9=u_9,$ \\
+    & $ ~  r_{10}=f$ \\
+    & $\rrbracket $ \\
+\end{tabular}    
+\end{figure}
+
+
+
+\subsubsection{Example Judgment}
+
+\inputminted{text}{design/example_judgment.ebpf}
+
+$$S_0 \vdash \cdot ~ / ~ \mathrm{mov} ~ r_0, 10 ~ / ~ \mathrm{mov} ~ r_1, 2 ~ ; ~ \mathrm{div} ~ r_0, r_1 ; \mathrm{exit} \hookrightarrow P$$
+where
+
+$$S_0 = \llbracket r_0 = x, r_1 = y, \dots \rrbracket$$
+and $x, y$ are unbound variables.
+
+\begin{prooftree}
+  \AxiomC{$S[r_0 \leftarrow 10] \vdash \mathrm{mov} ~ r_0, 10 ~/~  \mathrm{mov} ~ r_1, 2 ~ / ~ \mathrm{div} ~ r_0, r_1 ; \mathrm{exit} \hookrightarrow P$}
+  \UnaryInfC{$S_0 \vdash \cdot ~ / ~ \mathrm{mov} ~ r_0, 10 ~ / ~ \mathrm{mov} ~ r_1, 2 ~ ; ~ \mathrm{div} ~ r_0, r_1 ; \mathrm{exit} \hookrightarrow P$}
+\end{prooftree}
+
+\begin{prooftree}
+  \AxiomC{$S[r_0 \leftarrow 10, r_1 \leftarrow 2] \vdash \mathrm{mov} ~ r_0, 10 ~;~  \mathrm{mov} ~ r_1, 2 ~ / ~ \mathrm{div} ~ r_0, r_1 ~/~ \mathrm{exit} \hookrightarrow P$}  
+  \UnaryInfC{$S[r_0 \leftarrow 10] \vdash \mathrm{mov} ~ r_0, 10 ~/~ ~ \mathrm{mov} ~ r_1, 10 ~ / ~ \mathrm{div} ~ r_0, r_1 ; \mathrm{exit} \hookrightarrow P$}
+  \UnaryInfC{$S_0 \vdash \cdot ~ / ~ \mathrm{mov} ~ r_0, 10 ~ / ~ \mathrm{mov} ~ r_1, 10 ~ ; ~ \mathrm{div} ~ r_0, r_1 ; \mathrm{exit} \hookrightarrow P$}
+\end{prooftree}
+
+
+\begin{prooftree}
+  \AxiomC{$S[r_0 \leftarrow x \oslash y, r_1 \leftarrow 2] \vdash \mathrm{mov} ~ r_0, 10 ~;~  \mathrm{mov} ~ r_1, 2 ~ ; ~ \mathrm{div} ~ r_0, r_1 ~/~ \mathrm{exit} ~/~ \hookrightarrow Q$}  
+  \UnaryInfC{$S[r_0 \leftarrow 10, r_1 \leftarrow 2] \vdash \mathrm{mov} ~ r_0, 10 ~;~  \mathrm{mov} ~ r_1, 2 ~ / ~ \mathrm{div} ~ r_0, r_1 ; \mathrm{exit} \hookrightarrow y \neq 0 \land Q$}  
+  \UnaryInfC{$S[r_0 \leftarrow 10] \vdash \mathrm{mov} ~ r_0, 10 ~/~ ~ \mathrm{mov} ~ r_1, 10 ~ / ~ \mathrm{div} ~ r_0, r_1 ; \mathrm{exit} \hookrightarrow y \neq 0 \land Q$}
+  \UnaryInfC{$S_0 \vdash \cdot ~ / ~ \mathrm{mov} ~ r_0, 10 ~ / ~ \mathrm{mov} ~ r_1, 10 ~ ; ~ \mathrm{div} ~ r_0, r_1 ; \mathrm{exit} \hookrightarrow y \neq 0 \land Q$}
+\end{prooftree}
+
+\begin{prooftree}
+  \AxiomC{$S[r_0 \leftarrow x \oslash y, r_1 \leftarrow 2] \vdash \mathrm{mov} ~ r_0, 10 ~;~  \mathrm{mov} ~ r_1, 2 ~ ; ~ \mathrm{div} ~ r_0, r_1 ~/~ \mathrm{exit} ~/~ \cdot  \hookrightarrow true$}  
+  \UnaryInfC{$S[r_0 \leftarrow x \oslash y, r_1 \leftarrow 2] \vdash \mathrm{mov} ~ r_0, 10 ~;~  \mathrm{mov} ~ r_1, 2 ~ ; ~ \mathrm{div} ~ r_0, r_1 ~/~ \mathrm{exit} ~/~ \hookrightarrow Q$}  
+  \UnaryInfC{$S[r_0 \leftarrow 10, r_1 \leftarrow 2] \vdash \mathrm{mov} ~ r_0, 10 ~;~  \mathrm{mov} ~ r_1, 2 ~ / ~ \mathrm{div} ~ r_0, r_1 ; \mathrm{exit} \hookrightarrow y \neq 0 \land Q$}  
+  \UnaryInfC{$S[r_0 \leftarrow 10] \vdash \mathrm{mov} ~ r_0, 10 ~/~ ~ \mathrm{mov} ~ r_1, 10 ~ / ~ \mathrm{div} ~ r_0, r_1 ; \mathrm{exit} \hookrightarrow y \neq 0 \land Q$}
+  \UnaryInfC{$S_0 \vdash \cdot ~ / ~ \mathrm{mov} ~ r_0, 10 ~ / ~ \mathrm{mov} ~ r_1, 10 ~ ; ~ \mathrm{div} ~ r_0, r_1 ; \mathrm{exit} \hookrightarrow y \neq 0 \land Q$}
+\end{prooftree}
+
+
+
+\subsubsection*{Derivation Rules}
+
+\begin{prooftree}
+  \AxiomC{}
+  \LeftLabel{EXIT-I}
+  \UnaryInfC{$(P,\sigma) \vdash \mathrm{exit} \hookrightarrow (P \implies (\sigma(r_0) \not \in U),\sigma)$}
+\end{prooftree}
+
+
+\begin{prooftree}
+  \AxiomC{$$}
+  \LeftLabel{MOV-IMM}
+  \UnaryInfC{$(P,\sigma) \vdash \mathrm{mov} ~ r_d, IMM \righthookarrow (P \implies r_d = IMM,\sigma[r_d \mapsto IMM])$}
+\end{prooftree}
+
+\begin{prooftree}
+  \AxiomC{$$}
+  \LeftLabel{MOV-REG}
+  \UnaryInfC{$(P,\sigma) \vdash \mathrm{mov} ~ r_d, r_s \righthookarrow (P \implies r_d = r_s,\sigma[r_d \mapsto \sigma(r_s)])$}
+\end{prooftree}
+
+\begin{prooftree}
+  \AxiomC{}
+  \LeftLabel{ADD-IMM}
+  \UnaryInfC{$(P,\sigma) \vdash \mathrm{add} ~ R_d, IMM \hookrightarrow (P, \sigma[R_d \mapsto \sigma(R_d) \oplus IMM]$}
+\end{prooftree}
+
+\begin{prooftree}
+  \AxiomC{}
+  \LeftLabel{ADD-REG}
+  \UnaryInfC{$(P,\sigma) \vdash \mathrm{add} ~ R_d, R_s \hookrightarrow (P, \sigma[R_d \mapsto \sigma(R_d) \oplus \sigma(R_s)]$}
+\end{prooftree}
+
+\begin{prooftree}
+  \AxiomC{}
+  \LeftLabel{SUB-IMM}
+  \UnaryInfC{$(P,\sigma) \vdash \mathrm{sub} ~ R_d, IMM \hookrightarrow (P, \sigma[R_d \mapsto \sigma(R_d) \ominus IMM]$}
+\end{prooftree}
+
+\begin{prooftree}
+  \AxiomC{}
+  \LeftLabel{SUB-REG}
+  \UnaryInfC{$(P,\sigma) \vdash \mathrm{sub} ~ R_d, R_s \hookrightarrow (P, \sigma[R_d \mapsto \sigma(R_d) \ominus \sigma(R_s)]$}
+\end{prooftree}
+
+\begin{prooftree}
+  \AxiomC{}
+  \LeftLabel{DIV-IMM}
+  \UnaryInfC{$(P,\sigma) \vdash \mathrm{div} ~ R_d, IMM \hookrightarrow (P \land (IMM \neq 0), \sigma[R_d \mapsto \sigma(R_d) \oslash IMM])$}
+\end{prooftree}
+
+\begin{prooftree}
+  \AxiomC{}
+  \LeftLabel{DIV-REG}
+  \UnaryInfC{$(P,\sigma) \vdash \mathrm{div} ~ R_d, R_s \hookrightarrow (P \land (\sigma(R_s) \neq 0), \sigma[R_d \mapsto \sigma(R_d) \oslash \sigma(R_s)])$}
+\end{prooftree}
+
+\begin{prooftree}
+  \AxiomC{}
+  \LeftLabel{XOR-IMM}
+  \UnaryInfC{$(P,\sigma) \vdash \mathrm{xor} ~ R_d, IMM \hookrightarrow (P, \sigma[R_d \mapsto \sigma(R_d) \otimes IMM])$}
+\end{prooftree}
+
+\begin{prooftree}
+  \AxiomC{}
+  \LeftLabel{XOR-REG}
+  \UnaryInfC{$(P,\sigma) \vdash \mathrm{xor} ~ R_d, R_s \hookrightarrow (P, \sigma[R_d \mapsto \sigma(R_d) \otimes \sigma(R_s)])$}
+\end{prooftree}
+
+\begin{prooftree}
+  \AxiomC{$\sigma \vdash \sigma(R_d) = \sigma(R_s)$}
+  \LeftLabel{XOR-REG-INIT}
+  \UnaryInfC{$(P,\sigma) \vdash \mathrm{xor} ~ R_d, R_s \hookrightarrow (P, \sigma[R_d \mapsto 0])$}
+\end{prooftree}
+
+
+% \begin{prooftree}
+%   \AxiomC{$S[R \leftarrow N] \vdash K_1 ; \mathrm{mov} ~ R, N ~/~ I ~/~ K_2 \hookrightarrow P$}
+%   \LeftLabel{MOV-IMM}
+%   \UnaryInfC{$S \vdash K_1 ~/~ \mathrm{mov} ~ R, N ~/~ I ; K_2 \hookrightarrow P$}
+% \end{prooftree}
+
+% \begin{prooftree}
+%   \AxiomC{$S[R_d \leftarrow R_s] \vdash K_1 ; \mathrm{mov} ~ R_d, R_s ~/~ I ~/~ K_2 \hookrightarrow P$}
+%   \LeftLabel{MOV-REG}
+%   \UnaryInfC{$S \vdash K_1 ~/~ \mathrm{mov} ~ R_d, R_s ~/~ I ; K_2 \hookrightarrow P$}
+% \end{prooftree}
+
+% \begin{prooftree}
+%   \AxiomC{$S[R \leftarrow x + N] \vdash K_1 ; \mathrm{add} ~ R, N ~/~ I ~/~ K_2 \hookrightarrow P$}
+%   \LeftLabel{ADD-IMM}
+%   \UnaryInfC{$S \vdash K_1 ~/~ \mathrm{add} ~ R, N ~/~ I ; K_2 \hookrightarrow P$}
+% \end{prooftree}
+
+
