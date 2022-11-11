@@ -74,6 +74,13 @@ main =
               (Script vc') = judgmentToAssertion vc 
             in print $ pp $ withDefaults (Script $ cs ++ vc')
 
+    case genVC testProgOnlyExit of
+      Left err -> print err
+      Right vc -> do
+          let (Script cs) = judgmentToConstantDeclarations vc
+              (Script vc') = judgmentToAssertion vc 
+            in print $ pp $ withDefaults (Script $ cs ++ vc')
+
 
 
 

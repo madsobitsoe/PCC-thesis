@@ -60,16 +60,29 @@ type MachineState = M.Map Register SExpr
 
 type Constants = M.Map Register [VName]
 
-initialConstants = M.fromList [ (R0, ["r0_0"])
+-- initialConstants = M.fromList [ (R0, ["r0_0"])
+--                               , (R1, ["m"])
+--                               , (R2, ["n"])
+--                               , (R3, ["r3_0"])
+--                               , (R4, ["r4_0"])
+--                               , (R5, ["r5_0"])
+--                               , (R6, ["r6_0"])
+--                               , (R7, ["r7_0"])
+--                               , (R8, ["r8_0"])
+--                               , (R9, ["r9_0"])
+--                               , (R10,["fp"])
+--                               ]
+
+initialConstants = M.fromList [ (R0, ["R0_init"])
                               , (R1, ["m"])
                               , (R2, ["n"])
-                              , (R3, ["r3_0"])
-                              , (R4, ["r4_0"])
-                              , (R5, ["r5_0"])
-                              , (R6, ["r6_0"])
-                              , (R7, ["r7_0"])
-                              , (R8, ["r8_0"])
-                              , (R9, ["r9_0"])
+                              , (R3, ["R3_init"])
+                              , (R4, ["R4_init"])
+                              , (R5, ["R5_init"])
+                              , (R6, ["R6_init"])
+                              , (R7, ["R7_init"])
+                              , (R8, ["R8_init"])
+                              , (R9, ["R9_init"])
                               , (R10,["fp"])
                               ]
 
@@ -117,9 +130,9 @@ addImpl (Impl (PS PTrue) p) q = Impl p q
 -- If we have P => true as the first term and Q as the second term, make it P => Q
 addImpl (Impl p (PS PTrue)) q = Impl p q
 -- If we have P => (Q => R) and S, make it P => (Q => (R => S))
-addImpl (Impl p (Impl q r)) s = Impl p (Impl q (Impl r s))
+-- addImpl (Impl p (Impl q r)) s = Impl p (Impl q (addImpl r s))
 -- If we have P -> Q as first term and R as second, make it P -> (Q -> R) by calling recursively
-addImpl (Impl p q) r = Impl p (Impl q r)
+addImpl (Impl p q) r = Impl p (addImpl q r)
 addImpl p q = Impl p q
 addImpl _ _ = undefined
 
@@ -142,22 +155,35 @@ genVC' :: Judgment -> LineNoInstruction -> Either VCGenError Judgment
 genVC' (Judgment vc ms cs) (lineno, A.Exit) =
   case M.lookup R0 ms of
     Nothing -> Left "INTERNAL ERROR: R0 not in map"
-    Just (SUnVar _) -> Left "Invalid Program: R0 not initialized at exit"
-    Just _ -> Right (Judgment vc ms cs)
+    -- Just (SUnVar _) ->  -- Left "Invalid Program: R0 not initialized at exit"      
+    Just _ ->
+      let vc' = addImpl vc (PS (Geq (SVar "R0_init") (SImm 1)))
+      in Right (Judgment vc' ms cs)
       
 genVC' (Judgment vc ms cs) (lineno, A.Binary A.B64 A.Mov (A.Reg d) (Left (A.Reg s)))  =
                          let rd = reg2reg (A.Reg d)
                              rs = reg2reg (A.Reg s)
                          in case M.lookup rs ms of
                            Nothing -> Left "Key not in map"
+                           -- Source is not initialized, so "illegal" read
+                           -- Just (SUnVar _) ->
+                             
                            Just sexp ->
                              case M.lookup rd cs of
                                Nothing -> Left "INTERNAL ERROR"
                                Just consts ->
                                  let newConst = (show rd ++ "_" ++ show lineno)
                                      newConsts = M.insert rd (newConst:consts) cs
+                                     -- We need to ensure source has been initialised before we read it
+                                     initImpl1 = PS (Eq (SVar ("R" ++ show s ++ "_init")) (SImm 1))
+                                     -- If we initialise r_d, we add an implication that rd_init = 1,
+                                     -- before the "real" implication we want to add
+                                     initImpl2 = PS (Eq (SVar ("R" ++ show d ++ "_init")) (SImm 1))
                                  in
-                                   Right $ Judgment (addImpl vc (PS (Eq (SVar newConst) sexp))) (M.insert rd sexp ms) newConsts
+                                   case M.lookup rd ms of
+                                     Nothing -> Left "Internal error"
+                                     Just (SUnVar _) -> Right $ Judgment (addImpl (addImpl (addImpl vc initImpl1) initImpl2) (PS (Eq (SVar newConst) sexp))) (M.insert rd sexp ms) newConsts
+                                     Just _ ->  Right $ Judgment (addImpl vc (PS (Eq (SVar newConst) sexp))) (M.insert rd sexp ms) newConsts
 
 genVC' (Judgment vc ms cs) (lineno, A.Binary A.B64 A.Mov (A.Reg d) (Right n))  =
   let rd = reg2reg (A.Reg d)
@@ -166,8 +192,15 @@ genVC' (Judgment vc ms cs) (lineno, A.Binary A.B64 A.Mov (A.Reg d) (Right n))  =
       Nothing -> Left "INTERNAL ERROR"
       Just consts ->
         let newConst = (show rd ++ "_" ++ show lineno)
-            newConsts = M.insert rd (newConst:consts) cs
-        in Right $ Judgment (addImpl vc (PS (Eq (SVar newConst) (SImm (fromIntegral n))))) (M.insert (reg2reg (A.Reg d)) (SImm (fromIntegral n)) ms) newConsts 
+            newConsts = M.insert rd (newConst:consts) cs 
+            -- If we initialise r_d, we add an implication that rd_init = 1,
+            -- before the "real" implication we want to add
+            initImpl = PS (Eq (SVar ("R" ++ show d ++ "_init")) (SImm 1))
+        in
+          case M.lookup rd ms of
+            Nothing -> Left "Internal error"
+            Just (SUnVar _) -> Right $ Judgment (addImpl (addImpl vc initImpl) (PS (Eq (SVar newConst) (SImm (fromIntegral n))))) (M.insert (reg2reg (A.Reg d)) (SImm (fromIntegral n)) ms) newConsts 
+            Just _ -> Right $ Judgment (addImpl vc (PS (Eq (SVar newConst) (SImm (fromIntegral n))))) (M.insert (reg2reg (A.Reg d)) (SImm (fromIntegral n)) ms) newConsts 
 
 genVC' (Judgment vc ms cs) (lineno, A.Binary A.B64 A.Add (A.Reg d) (Right n))  =
   let rd = reg2reg (A.Reg d)
@@ -247,6 +280,7 @@ withDefaults = withDefaultOptions . withDefaultPostamble
 
 
 
+declFunR0Init = CmdDeclareFun (N "r0_init") [] (SBV.tBitVec 64)
 -- declFun32 name = CmdDeclareFun (N name) [] (tBitVec 32)
 declFun64 name = CmdDeclareFun (N name) [] (SBV.tBitVec 64)
 funRef name = App (I (N name) []) Nothing []
@@ -263,7 +297,7 @@ funRef name = App (I (N name) []) Nothing []
 
 judgmentToConstantDeclarations :: Judgment -> S.Script
 judgmentToConstantDeclarations (Judgment _ _ cs) =
-  S.Script $ map declFun64 $ concat $ M.elems cs
+  S.Script $ reverse . (map declFun64) $ concat $ M.elems cs
 
 
 sexprToScript :: SExpr -> S.Expr
