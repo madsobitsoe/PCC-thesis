@@ -1,6 +1,15 @@
 \subsection{VCGen}
 \label{subsec:vcgen}
 
+We want to have a verification condition generator that when given a FW-eBPF program $prog$, an initial machine state and a predicate representing the assumptions of all programs, i.e. that \texttt{r1} is initialized to contain a memory area, and \texttt{r2} is initialized to contain the size of the memory area in \texttt{r1} from which it is valid to read, and also guaranteed to be at least 1, i.e. $\forall r_1 . r_1 \geq 1$.
+
+
+Using this initial predicate, we wish to extend it by iterating through the instructions in $prog$ one by one, extracting any needed verification conditions that are required to hold for the program if it satisfies the safety policy.
+
+The final predicate $P$ should be $valid$, i.e. $\neg P$ should be unsatisfiable.
+This will ensure that no matter the initial values in \texttt{r1} and \texttt{r2}, if a proof that $P$ is valid can be obtained, the program will never violate the safety policy.
+
+
 \subsubsection{Judgments}
 
 % \[
@@ -141,15 +150,15 @@ and $x, y$ are unbound variables.
 
 
 \begin{prooftree}
-  \AxiomC{$$}
+  \AxiomC{}
   \LeftLabel{MOV-IMM}
-  \UnaryInfC{$(P,\sigma) \vdash \mathrm{mov} ~ r_d, IMM \righthookarrow (P \implies r_d = IMM,\sigma[r_d \mapsto IMM])$}
+  \UnaryInfC{$(P,\sigma ) \vdash \mathrm{mov} ~ r_d, IMM \hookrightarrow (P \implies r_d = IMM, \sigma [r_d \mapsto IMM]) $ }
 \end{prooftree}
 
 \begin{prooftree}
-  \AxiomC{$$}
+  \AxiomC{}
   \LeftLabel{MOV-REG}
-  \UnaryInfC{$(P,\sigma) \vdash \mathrm{mov} ~ r_d, r_s \righthookarrow (P \implies r_d = r_s,\sigma[r_d \mapsto \sigma(r_s)])$}
+  \UnaryInfC{$(P,\sigma) \vdash \mathrm{mov} ~ r_d, r_s \hookrightarrow (P \implies r_d = r_s,\sigma[r_d \mapsto \sigma(r_s)])$}
 \end{prooftree}
 
 \begin{prooftree}
