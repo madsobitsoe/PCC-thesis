@@ -24,6 +24,8 @@ dependencies:
 - ebpf-tools
 - containers
 - smtLib
+- transformers
+- mtl
 ghc-options:
 - -Wall
 - -Wcompat

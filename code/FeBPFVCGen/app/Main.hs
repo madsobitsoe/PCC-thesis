@@ -20,7 +20,11 @@ testProg = [ Binary B64 Mov (Reg 0) (Left (Reg 2))
 
 testProgOnlyExit = [ Exit ]
 
-testProgOneMov = [ Binary B64 Mov (Reg 0) (Left (Reg 2))
+
+testProgOneRegMov = [ Binary B64 Mov (Reg 0) (Left (Reg 2))
+                 , Exit ]
+
+testProgOneImmMov = [ Binary B64 Mov (Reg 0) (Right 42)
                  , Exit ]
 
 testProgTwoMov = [ Binary B64 Mov (Reg 0) (Left (Reg 2))
@@ -41,45 +45,47 @@ testProgRegDiv = [ Binary B64 Mov (Reg 0) (Right 10)
                  , Exit ]
 
 
+
+-- run :: Program -> IO ()
+-- run p = do
+--   res <- execute p
+--   case res of
+--     Left e -> putStrLn("*** Err: " ++ show e)
+--     Right (Judgment pc pred ms cs) ->
+--       putStrLn "Sweet baby jesus"
+
+
 main :: IO ()
 main =
   do
+    -- res <- execute testProgOnlyExit
+    case execute testProgOneImmMov of
+      Left e -> putStrLn("*** Err: " ++ show e)
+      Right (Judgment pred ms cs) ->
+        do
+          putStrLn "Program:"
+          print testProgOneImmMov
+          putStrLn "Preds:"
+          print pred
+          putStrLn "Machine State:"
+          print ms
+          putStrLn "Constants:"
+          print cs
+        
+
+    -- case genVC testProgRegDiv of
+    --   Left err -> print err
+    --   Right vc -> do
+    --       let (Script cs) = judgmentToConstantDeclarations vc
+    --           (Script vc') = judgmentToAssertion vc 
+    --         in print $ pp $ withDefaults (Script $ cs ++ vc')
+
     -- case genVC testProgOnlyExit of
     --   Left err -> print err
-    --   Right res -> print res
-    -- case genVC testProg of
-    --   Left err -> print err
-    --   Right res -> print res
-    -- putStrLn "One mov case:"
-    -- case genVC testProgOneMov of
-    --   Left err -> print err
-    --   Right res -> print res
-    -- putStrLn "Two mov case:"
-    -- case genVC testProgTwoMov of
-    --   Left err -> print err
-    --   Right res -> print res
-    -- putStrLn "Mov and Add case:"      
-    -- case genVC testProgMovAndAdd of
-    --   Left err -> print err
-    --   Right (Judgment vc ms cs) -> do
-    --     putStrLn "Constants:"
-    --     print cs
-    --     putStrLn "VC:"
-    --     print vc
-
-    case genVC testProgRegDiv of
-      Left err -> print err
-      Right vc -> do
-          let (Script cs) = judgmentToConstantDeclarations vc
-              (Script vc') = judgmentToAssertion vc 
-            in print $ pp $ withDefaults (Script $ cs ++ vc')
-
-    case genVC testProgOnlyExit of
-      Left err -> print err
-      Right vc -> do
-          let (Script cs) = judgmentToConstantDeclarations vc
-              (Script vc') = judgmentToAssertion vc 
-            in print $ pp $ withDefaults (Script $ cs ++ vc')
+    --   Right vc -> do
+    --       let (Script cs) = judgmentToConstantDeclarations vc
+    --           (Script vc') = judgmentToAssertion vc 
+    --         in print $ pp $ withDefaults (Script $ cs ++ vc')
 
 
 
