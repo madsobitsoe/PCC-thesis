@@ -25,5 +25,9 @@ At the beginning of execution of all programs, assume that
 
 At the end of all programs, \texttt{r0} will contain the return value. 
 This means \texttt{r0} should be initialized before an exit-instruction is reached.
+
+Ensuring registers are initialized before they are read is a security policy, not a safety policy.
+Therefore it is not a part of the verification conditions I will generate. Instead the derivation rules will ensure a register read is valid, so programs violating this will not be ``well formed'' and will not produce a verification condition. 
+
 \subsubsection*{Instruction set}
 

@@ -1,5 +1,5 @@
 module VCGen
-   ( execute, genVC, withDefaultOptions, Judgment(..), judgmentToConstantDeclarations, judgmentToAssertion, withDefaults)
+   ( execute, withDefaultOptions, Judgment(..), judgmentToConstantDeclarations, judgmentToAssertion, withDefaults)
 where
 
 import Ebpf.Asm as A
@@ -15,125 +15,145 @@ import Definitions
 import Util
 
 
+
 import Control.Monad
 import Control.Monad.Trans.State.Lazy
 import Control.Monad.Trans.Reader
 import Control.Monad.Except
 import Control.Monad.Trans
 
-
-genVC :: A.Program -> Either VCGenError Judgment
-genVC prog = innerGenVC initialJudgment (numberInstrs prog)
-
+-- type VCGenComp a = ReaderT LineNoProgram (StateT Judgment (
+-- >>>>>>> Stashed changes
 
 
+-- genVC :: A.Program -> Either VCGenError Judgment
+-- genVC prog = innerGenVC initialJudgment (Util.numberInstrs prog)
 
-innerGenVC :: Judgment -> LineNoProgram -> Either VCGenError Judgment
-innerGenVC _ _ = Left "Not implemented yet"
--- innerGenVC judgment [] = Left "Invalid program: Program was empty before exit"
--- innerGenVC judgment [(_,A.Exit)] = genVC' judgment (0, A.Exit)
--- innerGenVC judgment (i:is) =
---   case genVC' judgment i of
---     Left err -> Left err
---     Right judgment' -> innerGenVC judgment' is
+
+
+
+-- innerGenVC :: Judgment -> LineNoProgram -> Either VCGenError Judgment
+-- innerGenVC _ _ = Left "Not implemented yet"
+-- -- innerGenVC judgment [] = Left "Invalid program: Program was empty before exit"
+-- -- innerGenVC judgment [(_,A.Exit)] = genVC' judgment (0, A.Exit)
+-- -- innerGenVC judgment (i:is) =
+-- --   case genVC' judgment i of
+-- --     Left err -> Left err
+-- --     Right judgment' -> innerGenVC judgment' is
   
 
+-- <<<<<<< Updated upstream
+-- =======
 
-genVC' :: Judgment -> LineNoInstruction -> Either VCGenError Judgment
--- genVC' (Judgment vc ms cs) (lineno, A.Exit) =
---   case M.lookup R0 ms of
---     Nothing -> Left "INTERNAL ERROR: R0 not in map"
---     Just _ ->
---       let vc' = addImpl vc (PS (Geq (SVar "R0_init") (SImm 1)))
---       in Right (Judgment vc' ms cs)
+
+
+
+-- >>>>>>> Stashed changes
+
+-- genVC' :: Judgment -> LineNoInstruction -> Either VCGenError Judgment
+-- -- genVC' (Judgment vc ms cs) (lineno, A.Exit) =
+-- --   case M.lookup R0 ms of
+-- --     Nothing -> Left "INTERNAL ERROR: R0 not in map"
+-- <<<<<<< Updated upstream
+-- =======
+-- --     -- Just (SUnVar _) ->  -- Left "Invalid Program: R0 not initialized at exit"      
+-- >>>>>>> Stashed changes
+-- --     Just _ ->
+-- --       let vc' = addImpl vc (PS (Geq (SVar "R0_init") (SImm 1)))
+-- --       in Right (Judgment vc' ms cs)
       
--- genVC' (Judgment vc ms cs) (lineno, A.Binary A.B64 A.Mov (A.Reg d) (Left (A.Reg s)))  =
---                          let rd = reg2reg (A.Reg d)
---                              rs = reg2reg (A.Reg s)
---                          in case M.lookup rs ms of
---                            Nothing -> Left "Key not in map"
---                            -- Source is not initialized, so "illegal" read
---                            Just sexp ->
---                              case M.lookup rd cs of
---                                Nothing -> Left "INTERNAL ERROR"
---                                Just consts ->
---                                  let newConst = (show rd ++ "_" ++ show lineno)
---                                      newConsts = M.insert rd (newConst:consts) cs
---                                      -- We need to ensure source has been initialised before we read it
---                                      initImpl1 = PS (Eq (SVar ("R" ++ show s ++ "_init")) (SImm 1))
---                                      -- If we initialise r_d, we add an implication that rd_init = 1,
---                                      -- before the "real" implication we want to add
---                                      initImpl2 = PS (Eq (SVar ("R" ++ show d ++ "_init")) (SImm 1))
---                                  in
---                                    case M.lookup rd ms of
---                                      Nothing -> Left "Internal error"
---                                      -- Just (SUnVar _) -> Right $ Judgment (addImpl (addImpl (addImpl vc initImpl1) initImpl2) (PS (Eq (SVar newConst) sexp))) (M.insert rd sexp ms) newConsts
---                                      Just _ ->  Right $ Judgment (addImpl vc (PS (Eq (SVar newConst) sexp))) (M.insert rd sexp ms) newConsts
+-- -- genVC' (Judgment vc ms cs) (lineno, A.Binary A.B64 A.Mov (A.Reg d) (Left (A.Reg s)))  =
+-- --                          let rd = reg2reg (A.Reg d)
+-- --                              rs = reg2reg (A.Reg s)
+-- --                          in case M.lookup rs ms of
+-- --                            Nothing -> Left "Key not in map"
+-- --                            -- Source is not initialized, so "illegal" read
+-- <<<<<<< Updated upstream
+-- =======
+-- --                            -- Just (SUnVar _) ->
+                             
+-- >>>>>>> Stashed changes
+-- --                            Just sexp ->
+-- --                              case M.lookup rd cs of
+-- --                                Nothing -> Left "INTERNAL ERROR"
+-- --                                Just consts ->
+-- --                                  let newConst = (show rd ++ "_" ++ show lineno)
+-- --                                      newConsts = M.insert rd (newConst:consts) cs
+-- --                                      -- We need to ensure source has been initialised before we read it
+-- --                                      initImpl1 = PS (Eq (SVar ("R" ++ show s ++ "_init")) (SImm 1))
+-- --                                      -- If we initialise r_d, we add an implication that rd_init = 1,
+-- --                                      -- before the "real" implication we want to add
+-- --                                      initImpl2 = PS (Eq (SVar ("R" ++ show d ++ "_init")) (SImm 1))
+-- --                                  in
+-- --                                    case M.lookup rd ms of
+-- --                                      Nothing -> Left "Internal error"
+-- --                                      -- Just (SUnVar _) -> Right $ Judgment (addImpl (addImpl (addImpl vc initImpl1) initImpl2) (PS (Eq (SVar newConst) sexp))) (M.insert rd sexp ms) newConsts
+-- --                                      Just _ ->  Right $ Judgment (addImpl vc (PS (Eq (SVar newConst) sexp))) (M.insert rd sexp ms) newConsts
 
--- genVC' (Judgment vc ms cs) (lineno, A.Binary A.B64 A.Mov (A.Reg d) (Right n))  =
---   let rd = reg2reg (A.Reg d)
---   in
---     case M.lookup rd cs of
---       Nothing -> Left "INTERNAL ERROR"
---       Just consts ->
---         let newConst = (show rd ++ "_" ++ show lineno)
---             newConsts = M.insert rd (newConst:consts) cs 
---             -- If we initialise r_d, we add an implication that rd_init = 1,
---             -- before the "real" implication we want to add
---             initImpl = PS (Eq (SVar ("R" ++ show d ++ "_init")) (SImm 1))
---         in
---           case M.lookup rd ms of
---             Nothing -> Left "Internal error"
---             -- Just (SUnVar _) -> Right $ Judgment (addImpl (addImpl vc initImpl) (PS (Eq (SVar newConst) (SImm (fromIntegral n))))) (M.insert (reg2reg (A.Reg d)) (SImm (fromIntegral n)) ms) newConsts 
---             Just _ -> Right $ Judgment (addImpl vc (PS (Eq (SVar newConst) (SImm (fromIntegral n))))) (M.insert (reg2reg (A.Reg d)) (SImm (fromIntegral n)) ms) newConsts 
+-- -- genVC' (Judgment vc ms cs) (lineno, A.Binary A.B64 A.Mov (A.Reg d) (Right n))  =
+-- --   let rd = reg2reg (A.Reg d)
+-- --   in
+-- --     case M.lookup rd cs of
+-- --       Nothing -> Left "INTERNAL ERROR"
+-- --       Just consts ->
+-- --         let newConst = (show rd ++ "_" ++ show lineno)
+-- --             newConsts = M.insert rd (newConst:consts) cs 
+-- --             -- If we initialise r_d, we add an implication that rd_init = 1,
+-- --             -- before the "real" implication we want to add
+-- --             initImpl = PS (Eq (SVar ("R" ++ show d ++ "_init")) (SImm 1))
+-- --         in
+-- --           case M.lookup rd ms of
+-- --             Nothing -> Left "Internal error"
+-- --             -- Just (SUnVar _) -> Right $ Judgment (addImpl (addImpl vc initImpl) (PS (Eq (SVar newConst) (SImm (fromIntegral n))))) (M.insert (reg2reg (A.Reg d)) (SImm (fromIntegral n)) ms) newConsts 
+-- --             Just _ -> Right $ Judgment (addImpl vc (PS (Eq (SVar newConst) (SImm (fromIntegral n))))) (M.insert (reg2reg (A.Reg d)) (SImm (fromIntegral n)) ms) newConsts 
 
--- genVC' (Judgment vc ms cs) (lineno, A.Binary A.B64 A.Add (A.Reg d) (Right n))  =
---   let rd = reg2reg (A.Reg d)
---   in
---     case M.lookup rd cs of
---       Nothing -> Left "INTERNAL ERROR"
---       Just consts ->
---         let newConst = (show rd ++ "_" ++ show lineno)
---             newConsts = M.insert rd (newConst:consts) cs
---         in Right $ Judgment (addImpl vc (PS (Eq (SVar newConst) (SAdd (SVar (head consts)) (SImm (fromIntegral n)))))) (M.insert (reg2reg (A.Reg d)) (SAdd (SVar newConst) (SImm (fromIntegral n))) ms) newConsts
+-- -- genVC' (Judgment vc ms cs) (lineno, A.Binary A.B64 A.Add (A.Reg d) (Right n))  =
+-- --   let rd = reg2reg (A.Reg d)
+-- --   in
+-- --     case M.lookup rd cs of
+-- --       Nothing -> Left "INTERNAL ERROR"
+-- --       Just consts ->
+-- --         let newConst = (show rd ++ "_" ++ show lineno)
+-- --             newConsts = M.insert rd (newConst:consts) cs
+-- --         in Right $ Judgment (addImpl vc (PS (Eq (SVar newConst) (SAdd (SVar (head consts)) (SImm (fromIntegral n)))))) (M.insert (reg2reg (A.Reg d)) (SAdd (SVar newConst) (SImm (fromIntegral n))) ms) newConsts
 
--- genVC' (Judgment vc ms cs) (lineno, A.Binary A.B64 A.Add (A.Reg d) (Left (Reg s)))  =
---   let rd = reg2reg (A.Reg d)
---       rs = reg2reg (A.Reg s)
---   in case M.lookup rs ms of
---     Nothing -> Left "Key not in map"
---     Just sexp ->
---       case M.lookup rs cs of
---         Nothing -> Left "INTERNAL ERROR"
---         Just srcConsts ->
---           case M.lookup rd cs of
---             Nothing -> Left "INTERNAL ERROR"
---             Just dstConsts ->
---               let newConst = (show rd ++ "_" ++ show lineno)
---                   newConsts = M.insert rd (newConst:dstConsts) cs
---               in Right $ Judgment (addImpl vc (PS (Eq (SVar newConst) (SAdd (SVar (head dstConsts)) (SVar (head srcConsts)))))) (M.insert (reg2reg (A.Reg d)) (SAdd (SVar newConst) (SVar (head srcConsts))) ms) newConsts
+-- -- genVC' (Judgment vc ms cs) (lineno, A.Binary A.B64 A.Add (A.Reg d) (Left (Reg s)))  =
+-- --   let rd = reg2reg (A.Reg d)
+-- --       rs = reg2reg (A.Reg s)
+-- --   in case M.lookup rs ms of
+-- --     Nothing -> Left "Key not in map"
+-- --     Just sexp ->
+-- --       case M.lookup rs cs of
+-- --         Nothing -> Left "INTERNAL ERROR"
+-- --         Just srcConsts ->
+-- --           case M.lookup rd cs of
+-- --             Nothing -> Left "INTERNAL ERROR"
+-- --             Just dstConsts ->
+-- --               let newConst = (show rd ++ "_" ++ show lineno)
+-- --                   newConsts = M.insert rd (newConst:dstConsts) cs
+-- --               in Right $ Judgment (addImpl vc (PS (Eq (SVar newConst) (SAdd (SVar (head dstConsts)) (SVar (head srcConsts)))))) (M.insert (reg2reg (A.Reg d)) (SAdd (SVar newConst) (SVar (head srcConsts))) ms) newConsts
 
 
--- genVC' (Judgment vc ms cs) (lineno, A.Binary A.B64 A.Div (A.Reg d) (Left (Reg s)))  =
---   let rd = reg2reg (A.Reg d)
---       rs = reg2reg (A.Reg s)
---   in case M.lookup rs ms of
---     Nothing -> Left "Key not in map"
---     Just sexp ->
---       case M.lookup rs cs of
---         Nothing -> Left "INTERNAL ERROR"
---         Just srcConsts ->
---           case M.lookup rd cs of
---             Nothing -> Left "INTERNAL ERROR"
---             Just dstConsts ->
---               let newConst = (show rd ++ "_" ++ show lineno)
---                   newConsts = M.insert rd (newConst:dstConsts) cs
---                   notZeroPred = PS (Neq (SVar (head srcConsts)) (SImm 0))
---                   postDivPred = PS (Eq (SVar newConst) (SDiv (SVar (head dstConsts)) (SVar (head srcConsts))))
---               in
---                 Right $ Judgment (addImpl vc (addImpl notZeroPred postDivPred)) (M.insert rd (SDiv (SVar (head dstConsts)) (SVar (head srcConsts))) ms) newConsts
+-- -- genVC' (Judgment vc ms cs) (lineno, A.Binary A.B64 A.Div (A.Reg d) (Left (Reg s)))  =
+-- --   let rd = reg2reg (A.Reg d)
+-- --       rs = reg2reg (A.Reg s)
+-- --   in case M.lookup rs ms of
+-- --     Nothing -> Left "Key not in map"
+-- --     Just sexp ->
+-- --       case M.lookup rs cs of
+-- --         Nothing -> Left "INTERNAL ERROR"
+-- --         Just srcConsts ->
+-- --           case M.lookup rd cs of
+-- --             Nothing -> Left "INTERNAL ERROR"
+-- --             Just dstConsts ->
+-- --               let newConst = (show rd ++ "_" ++ show lineno)
+-- --                   newConsts = M.insert rd (newConst:dstConsts) cs
+-- --                   notZeroPred = PS (Neq (SVar (head srcConsts)) (SImm 0))
+-- --                   postDivPred = PS (Eq (SVar newConst) (SDiv (SVar (head dstConsts)) (SVar (head srcConsts))))
+-- --               in
+-- --                 Right $ Judgment (addImpl vc (addImpl notZeroPred postDivPred)) (M.insert rd (SDiv (SVar (head dstConsts)) (SVar (head srcConsts))) ms) newConsts
                 
-genVC' _ _ = Left "Not implemented yet"
+--genVC' _ _ = Left "Not implemented yet"
 
 
 

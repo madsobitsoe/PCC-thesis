@@ -3,12 +3,12 @@
 
 \begin{itemize}
 \item No divide by zero. (Not in the verifier)
-\item Memory safety for context reads.
 \item Memory safety for stack reads and writes.
-\item ``safe'' use of uninitialized registers, such as \texttt{xor r0, r0} to set \texttt{r0 = 0}. Common patterns from x86\_64 assembly that are easy to verify safe but explicitly not allowed in eBPF.
-  (Not sure if this is a safety policy - or can be formulated as one.)
-\item Program termination. (Maybe). \newline
-  Though ``termination'', i.e. the DAG-analysis performed by the verifier seems an obvious candidate, it is trivial as long as FW-eBPF does not include jumps or branching.
+\item Memory safety for context reads.
+% \item ``safe'' use of uninitialized registers, such as \texttt{xor r0, r0} to set \texttt{r0 = 0}. Common patterns from x86\_64 assembly that are easy to verify safe but explicitly not allowed in eBPF.
+%   (Not sure if this is a safety policy - or can be formulated as one.)
+% \item Program termination. (Maybe). \newline
+%   Though ``termination'', i.e. the DAG-analysis performed by the verifier seems an obvious candidate, it is trivial as long as FW-eBPF does not include jumps or branching.
 
 \end{itemize}
 
