@@ -69,63 +69,9 @@ The judgment for instructions is
   \UnaryInfC{$\langle \mathrm{mov} ~ r_d, o_s, \sigma \rangle \downarrow (\sigma(r_d) = e, \sigma[r_d \mapsto e])$}
   \end{prooftree}
   
-\subsubsection{Expressions and predicates}
-
-\begin{figure}[ht]
-  \centering
-  \begin{tabular}{lrl}
-    % Uninitialised Variables & $U ::= $ & $u_0 ~|~ u_3~|~ u_4~|~ u_5~|~ u_6~|~ u_7~|~ u_8~|~ u_9 $ \\
-    Variables & $X \quad ~$ &\\
-    % Expressions & $E ::= $ & $N ~ | ~ \mathrm{UNINIT} ~ | ~ X ~ |$ \\
-    Expressions & $E ::= $ & $N ~  | ~ X ~ |$ \\
-              % & & $E_1 + E_2 ~ | ~ E_1 - E_2 ~ | ~ E_1 ~ \mathrm{div} ~ E_2 ~ | ~ E_1 ~ \mathrm{xor} ~ E_2 ~ |$ \\
-              & & $E_1 \oplus E_2 ~ | ~ E_1 \ominus E_2 ~ | ~ E_1 ~ \oslash ~ E_2 ~ | ~ E_1 ~ \otimes ~ E_2 ~ $ \\    
-    % & & $sel(E_1, E_2) ~|~ upd(E_1, E_2, E_3)$ \\
-    Expression Predicates & $EP ::=$ & $true ~ | ~ false ~ | ~ E_1 = E_2 ~ | E_1 \neq E_2 ~ | ~ E_1 ~ \geq ~ E_2 ~ | ~ E_1 < E_2 ~ | ~ E \not \in U$ \\
-    % Predicates & $P ::=$ & $EP ~ | ~ P_1 \land P_2 ~ | ~ P_1 \implies P_2 ~ | ~ \forall X.P$ \\
-    Predicates & $P ::=$ & $EP ~ | ~ P_1 \land P_2 ~ | ~ P_1 \implies P_2$ \\
-\end{tabular}    
-\end{figure}
-
-In the syntax for expressions, the symbols have the following meaning:
-
-\begin{figure}[ht]
-  \centering
-  \begin{tabular}{ll}
-    $\oplus$  & unsigned addition with 64-bit wrapping.\\
-    $\ominus$ & unsigned subtraction with 64-bit wrapping. \\
-    $\oslash$ & unsigned division with 64-bit wrapping. \\
-    $\otimes$ & xor-operation with 64-bit wrapping. \\
-    % $sel(E_1, E_2)$ & If $E_1$ describes memory state, returns the value stored in memory address $E_2$ \\
-    % $upd(E_1, E_2, E_3)$ & In mem-state $E_1$, replace $[E_2]$ with value of $E_3$. \\
-    \end{tabular}
-\end{figure}
 
 
 
-
-
-
-\subsubsection{Instruction Sequences}
-
-Elements $I$ denote instructions as the following:
-
-\begin{figure}[H]
-  \centering
-  \begin{tabular}{ll}
-    Labels & $L ::= N \in \mathbb{Z}^+$ \\
-    Register & $R ::= r_0, r_1, r_2, r_3, r_4, r_5, r_6, r_7, r_8, r_9$ \\
-    Frame Pointer & $FP ::= r_{10}$ \\
-    Immediate & $IMM \in 0..2^{32}-1$ \\
-    Source & $S ::= R ~ | ~ FP ~ | ~ IMM$ \\
-    Assembly Mnemonics & $A ::= \mathrm{mov} ~ R, S ~ | ~ \mathrm{add} ~ R, S ~ | ~ \mathrm{div} ~ R, S ~ | ~ \mathrm{sub} ~ R, S ~ | ~ \mathrm{xor} ~ R, S$ \\
-    Instructions & $I ::= L ~ : ~ A$\\
-\end{tabular}    
-  % \caption{}
-  % \label{fig:instruction_sequences}
-\end{figure}
-
-A label is the zero-indexed number of the instruction in the eBPF-program.
 
 
 
@@ -154,27 +100,155 @@ The initial machine state only contains variable for \texttt{r1, r2} containing 
 
 \subsubsection{Example Judgment}
 
-\inputminted{text}{design/example_judgment.ebpf}
+As an example consider the below program. We want the generated verification condition for this program, line for line, to be the predicate on the right hand side.
+
+\begin{tabular}{rll}
+    & \textbf{Instruction} & \textbf{Resulting predicate}  \\
+  0:& Before execution & $n \geq 1 \implies$ \\
+  1:& \texttt{mov r0, 10} & $(\text{r0\_1} = 10 \implies $ \\
+  2:& \texttt{mov r1, r2} & $(\text{r1\_2} = n \implies$  \\
+  3:& \texttt{div r0, r1} & $(n \neq 0) \land (\text{r0\_3} = (\text{r0\_1} \oslash \text{r1\_2}) \implies$  \\
+  4:& \texttt{exit} & $true)))$ & \\
+\end{tabular}
+
+We will go through the instructions and resulting predicate line by line, informally reasoning about what parts we need in order to generate the verification condition we wish to obtain. Later we will formally define those parts.
+
+The first line is not an instruction, but the initial predicate. We know (by design) that the register \texttt{r2} contains a value $n \geq 1$. 
+
+Looking at the first instruction of the program, we want to turn \texttt{1: mov r0, 10} into $\text{r0\_1} = 10 \implies Q$, where $Q$ is some yet unknown predicate.
+
+In order to turn the register \texttt{r0} into the variable \texttt{r0\_1}, we need some function to turn a \textit{destination register} at a specific \textit{line number} into a variable we can refer to in our predicate:
+\[
+newVar (n, r) = r + "\_" + n
+\]
+
+We need a way to represent a \textit{destination register} and a source operand, in this case an immediate integer constant.
+Finally we need a rule that turns \texttt{lineno: mov rd, imm} into $\text{rd\_lineno} = imm$.
+
+Looking at the second instruction, \texttt{2: mov r1, r2}, we want to turn it into $\text{r1\_2} = n$.
+Where the first instruction has an immediate constant as the source operand, the second instruction has a register as the source operand. Our chosen representation of source operands must be either a numeral or a reference to a register.
+
+We can obtain the variable r1\_2 using the $newVar$ function. The variable $n$ however, represents the value in register \texttt{r2} at the beginning of the program. We need a way of representing a \textit{machine state}, that maps registers to symbolic values.
+
+To solve this, we introduce the store $\sigma$ to represent the \textit{machine state}. We have symbolic values for three registers at the beginning of every program, so we define the initial machine state as \[\sigma_0 = \llbracket r_1 \mapsto m, r_2 \mapsto n, r_{10} \mapsto fp \rrbracket \]
+
+A lookup can be perfomed as $\sigma(r)$ and will yield a symbolic value. If the register $r$ is not present in the store, the result is undefined. 
+A store can be extended as $\sigma[r \mapsto v]$, meaning the store $\sigma$, but with $\sigma(r)$ now yielding the symbolic value $v$.
+
+We will need to obtain a new machine state that includes the new mapping, and can do so as $\sigma[rd \mapsto \sigma(rs)]$.
+
+Finally we need a new rule that turns \texttt{lineno: mov rd, rs} into $\text{rd\_lineno} = \sigma(rs)$
 
 
-\begin{prooftree}
-  \AxiomC{}
-  \UnaryInfC{$(P,\sigma_0) \vdash \mathrm{mov} ~ \mathrm{r0, 10}  ~ \hookrightarrow (P, \sigma_0[\sigma_0(r0) \mapsto 10])$}
-\end{prooftree}
-
-\begin{prooftree}
-  \AxiomC{}
-  \UnaryInfC{$(P,\sigma_0) \vdash \mathrm{mov} ~ \mathrm{r0, 10}  ~ \hookrightarrow (P, \sigma_0[\sigma_0(r0) \mapsto 10])$}
-  \AxiomC{$\sigma(r_2) \not \in U$}
-  \BinaryInfC{$(P,\sigma) \vdash \mathrm{div} ~ r_0, r_2 \hookrightarrow (P \implies (\sigma(r_2) \neq 0 \land (\sigma(r_0) \mapsto ))$}
-\end{prooftree}
+The third instruction,  \texttt{3: div r0, r1} we want to turn into a conjunction, where the right hand side has the implication.
 
 
-\begin{prooftree}
-  \AxiomC{}
-  \UnaryInfC{}
-  \UnaryInfC{$(P,\sigma) \vdash \mathrm{exit} ~ \hookrightarrow (P \implies true, \sigma)$}
-\end{prooftree}
+First looking at the left hand side of the predicate, $n \neq 0$.
+Division by zero is not allowed in our safety policy, so whenever we have an unknown divisor, we need to assert the divisor is not 0. Thus we need a way to turn \texttt{div rd, rs} into $\sigma(rs) \neq 0$.
+$n$ represents the value in register \texttt{r2} at the beginning of the program. In the previous instruction we assigned the value of the register \texttt{r2} to the register \texttt{r1}, and assuming we updated the store $\sigma$ accordingly, $\sigma(rs) = n$ should be taken care of. 
+
+
+Looking at the right hand side of the predicate, $\text{r0\_3} = (\text{r0\_1} \oslash \text{r1\_2})$, we can obtain r0\_3 using the $newVar$ function. r0\_1 is the variable that represents the value in register \texttt{r0} \textit{before} execution of instruction 3, likewise r1\_2 for register \texttt{r1}. We need a way to obtain the last generated constant for a register.
+The operator $\oslash$ I have chosen to represent unsigned 64 bit integer division.
+
+We need a new rule that turns \texttt{lineno: div rd, rs} into the conjunction of the two predicates, as well as updating the store.
+
+The last instruction, \texttt{4: exit} should be transformed into $true$. 
+
+
+Finally, we need a way to combine the generated predicates. 
+
+
+\subsubsection{Instruction Sequences}
+
+We begin by defining how we represent instructions. 
+% Elements $I$ denote instructions as the following:
+
+\begin{figure}[H]
+  \centering
+  \begin{tabular}{ll}
+    Labels & $L ::= N \in \mathbb{Z}^+$ \\
+    Register & $R ::= r_0 ~|~ r_1 ~|~ r_2 ~|~ r_3 ~|~ r_4 ~|~ r_5 ~|~ r_6 ~|~ r_7 ~|~ r_8 ~|~ r_9 ~ | ~ r_{10}$ \\
+    % Frame Pointer & $FP ::= r_{10}$ \\
+    Immediate & $IMM \in 0..2^{32}-1$ \\
+    % Source & $S ::= R ~ | ~ FP ~ | ~ IMM$ \\
+  Source & $S ::= R  ~ | ~ IMM$ \\
+  % Assembly Mnemonics & $A ::= \mathrm{mov} ~ R, S ~ | ~ \mathrm{add} ~ R, S ~ | ~ \mathrm{div} ~ R, S ~ | ~ \mathrm{sub} ~ R, S ~ | ~ \mathrm{xor} ~ R, S$ \\
+    Assembly Mnemonics & $A ::= \mathrm{exit} ~ | ~ \mathrm{mov} ~ R, S ~ |  ~ \mathrm{div} ~ R, S$ \\
+    Instruction & $I ::= L ~ : ~ A$\\
+    Program & $P ::= \{ ~I~ \}$ \\
+\end{tabular}    
+  % \caption{}
+  % \label{fig:instruction_sequences}
+\end{figure}
+
+A label is the one-indexed number of the instruction in the eBPF-program.
+A Program is a sequence of instructions.
+
+
+
+\subsubsection{Expressions and predicates}
+We continue by defining the syntax for expression and predicates.
+
+% \begin{figure}[ht]
+%   \centering
+  \begin{tabular}{lrl}
+    % Uninitialised Variables & $U ::= $ & $u_0 ~|~ u_3~|~ u_4~|~ u_5~|~ u_6~|~ u_7~|~ u_8~|~ u_9 $ \\
+    Variables & $X \quad ~$ &\\
+    Immediates & $N \quad ~$ & $\in \{0..2^{32}-1\}$  \\
+    % Expressions & $E ::= $ & $N ~ | ~ \mathrm{UNINIT} ~ | ~ X ~ |$ \\
+    Expressions & $E ::= $ & $N ~  | ~ X ~ | ~ E_1 \oslash E_2$ \\
+              % & & $E_1 + E_2 ~ | ~ E_1 - E_2 ~ | ~ E_1 ~ \mathrm{div} ~ E_2 ~ | ~ E_1 ~ \mathrm{xor} ~ E_2 ~ |$ \\
+              % & & $E_1 \oplus E_2 ~ | ~ E_1 \ominus E_2 ~ | ~ E_1 ~ \oslash ~ E_2 ~ | ~ E_1 ~ \otimes ~ E_2 ~ $ \\    
+    % & & $sel(E_1, E_2) ~|~ upd(E_1, E_2, E_3)$ \\
+    % Expression Predicates & $EP ::=$ & $true ~ | ~ false ~ | ~ E_1 = E_2 ~ | E_1 \neq E_2 ~ | ~ E_1 ~ \geq ~ E_2 ~ | ~ E_1 < E_2 ~ | ~ E \not \in U$ \\
+    Expression Predicates & $EP ::=$ & $true ~ | ~ E_1 = E_2 ~ | E_1 \neq E_2 ~ | ~ E_1 ~ \geq ~ E_2 $ \\
+    % Predicates & $P ::=$ & $EP ~ | ~ P_1 \land P_2 ~ | ~ P_1 \implies P_2 ~ | ~ \forall X.P$ \\
+    Predicates & $P ::=$ & $EP ~ | ~ P_1 \land P_2 ~ | ~ P_1 \implies P_2$ \\
+\end{tabular}    
+% \end{figure}
+
+In the syntax for expressions, the symbols have the following meaning:
+
+\begin{figure}[ht]
+  \centering
+  \begin{tabular}{ll}
+    % $\oplus$  & unsigned addition with 64-bit wrapping.\\
+    % $\ominus$ & unsigned subtraction with 64-bit wrapping. \\
+    $\oslash$ & unsigned division with 64-bit wrapping. \\
+    % $\otimes$ & xor-operation with 64-bit wrapping. \\
+    % $sel(E_1, E_2)$ & If $E_1$ describes memory state, returns the value stored in memory address $E_2$ \\
+    % $upd(E_1, E_2, E_3)$ & In mem-state $E_1$, replace $[E_2]$ with value of $E_3$. \\
+    \end{tabular}
+\end{figure}
+
+
+
+
+
+
+
+% \inputminted{text}{design/example_judgment.ebpf}
+
+
+% \begin{prooftree}
+%   \AxiomC{}
+%   \UnaryInfC{$(P,\sigma_0) \vdash \mathrm{mov} ~ \mathrm{r0, 10}  ~ \hookrightarrow (P, \sigma_0[\sigma_0(r0) \mapsto 10])$}
+% \end{prooftree}
+
+% \begin{prooftree}
+%   \AxiomC{}
+%   \UnaryInfC{$(P,\sigma_0) \vdash \mathrm{mov} ~ \mathrm{r0, 10}  ~ \hookrightarrow (P, \sigma_0[\sigma_0(r0) \mapsto 10])$}
+%   \AxiomC{$\sigma(r_2) \not \in U$}
+%   \BinaryInfC{$(P,\sigma) \vdash \mathrm{div} ~ r_0, r_2 \hookrightarrow (P \implies (\sigma(r_2) \neq 0 \land (\sigma(r_0) \mapsto ))$}
+% \end{prooftree}
+
+
+% \begin{prooftree}
+%   \AxiomC{}
+%   \UnaryInfC{}
+%   \UnaryInfC{$(P,\sigma) \vdash \mathrm{exit} ~ \hookrightarrow (P \implies true, \sigma)$}
+% \end{prooftree}
 
 % $$S_0 \vdash \cdot ~ / ~ \mathrm{mov} ~ r_0, 10 ~ / ~ \mathrm{mov} ~ r_1, 2 ~ ; ~ \mathrm{div} ~ r_0, r_1 ; \mathrm{exit} \hookrightarrow P$$
 % where
@@ -212,6 +286,9 @@ The initial machine state only contains variable for \texttt{r1, r2} containing 
 
 
 \subsubsection*{Derivation Rules}
+
+
+
 
 \begin{prooftree}
   \AxiomC{}
