@@ -1,6 +1,6 @@
 module VCGen
-    ( execute, genVC, withDefaultOptions, Judgment(..), judgmentToConstantDeclarations, judgmentToAssertion, withDefaults
-    ) where
+   ( execute, genVC, withDefaultOptions, Judgment(..), judgmentToConstantDeclarations, judgmentToAssertion, withDefaults)
+where
 
 import Ebpf.Asm as A
 import Ebpf.Decode as D
@@ -280,11 +280,21 @@ lookConstants reg = do
   case M.lookup reg cs of
     Nothing -> abort "INTERNAL ERROR: Register not present in constants"
     Just consts -> return consts
-    
+
+
+lookPred :: VCGenComp Pred
+lookPred = do
+  (Judgment pred _ _) <- lift get
+  return pred
 
 symbolicEvalInstruction :: A.Instruction -> VCGenComp SExpr
 symbolicEvalInstruction (A.Binary A.B64 A.Mov (A.Reg d) (Right imm)) =
   return $ SImm $ fromIntegral imm
+
+symbolicEvalInstruction (A.Binary A.B64 A.Mov (A.Reg d) (Left srcReg)) =
+  do
+    sourceVal <- lookRegister (reg2reg srcReg)
+    return $ sourceVal
 
 symbolicEvalInstruction _ = abort $ "Not yet implemented"
 
