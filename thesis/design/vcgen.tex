@@ -322,7 +322,7 @@ Meaning if an instruction $I$ is symbolically executed with a machine state $\si
 \begin{prooftree}
   \AxiomC{}
   \LeftLabel{EXIT-I}
-  \UnaryInfC{$\langle L : \mathrm{exit}, (\sigma, \gamma) \downarrow (true, \sigma, \gamma)$}
+  \UnaryInfC{$\langle L : \mathrm{exit}, (\sigma, \gamma) \rangle \downarrow (true, \sigma, \gamma)$}
 \end{prooftree}
 
 
@@ -330,7 +330,7 @@ Meaning if an instruction $I$ is symbolically executed with a machine state $\si
   \AxiomC{$\langle IMM, \sigma \rangle \downarrow e$}
   \AxiomC{$withVar(n, r_d, \gamma) = \gamma'$}  
   \LeftLabel{MOV-IMM}
-  \BinaryInfC{$\langle n: \mathrm{mov} ~r_d, IMM, (\sigma, \gamma) \downarrow (lastVar(r_d,\gamma') = e, \sigma [r_d \mapsto e], \gamma') $ }
+  \BinaryInfC{$\langle n: \mathrm{mov} ~r_d, IMM, (\sigma, \gamma) \rangle \downarrow (lastVar(r_d,\gamma') = e, \sigma [r_d \mapsto e], \gamma') $ }
 \end{prooftree}
 
 
@@ -338,7 +338,7 @@ Meaning if an instruction $I$ is symbolically executed with a machine state $\si
   \AxiomC{$\langle r_s, \sigma \rangle \downarrow e$}
   \AxiomC{$withVar(n, r_d, \gamma) = \gamma'$}
   \LeftLabel{MOV-REG}
-  \BinaryInfC{$\langle n: \mathrm{mov} ~r_d, r_s, (\sigma, \gamma) \downarrow (lastVar(r_d,\gamma') = e, \sigma [r_d \mapsto e], \gamma') $ }
+  \BinaryInfC{$\langle n: \mathrm{mov} ~r_d, r_s, (\sigma, \gamma) \rangle \downarrow (lastVar(r_d,\gamma') = e, \sigma [r_d \mapsto e], \gamma') $ }
 \end{prooftree}
 
 
@@ -347,7 +347,7 @@ Meaning if an instruction $I$ is symbolically executed with a machine state $\si
   \AxiomC{$\langle r_s, \sigma \rangle \downarrow e_s$}  
   \AxiomC{$withVar(n, r_d, \gamma) = \gamma'$}
   \LeftLabel{DIV-REG}
-  \TrinaryInfC{$\langle n: \mathrm{div} ~r_d, r_s, (\sigma, \gamma) \downarrow ((e_s \neq 0) \land lastVar(r_d,\gamma') = lastVar(r_d,\gamma) \oslash lastVar(r_s,\gamma), \sigma [r_d \mapsto lastVar(r_d,\gamma')], \gamma') $ }
+  \TrinaryInfC{$\langle n: \mathrm{div} ~r_d, r_s, (\sigma, \gamma) \rangle \downarrow ((e_s \neq 0) \land lastVar(r_d,\gamma') = lastVar(r_d,\gamma) \oslash lastVar(r_s,\gamma), \sigma [r_d \mapsto lastVar(r_d,\gamma')], \gamma') $ }
 \end{prooftree}
 
 
@@ -355,7 +355,7 @@ Meaning if an instruction $I$ is symbolically executed with a machine state $\si
 
 The judgment for Programs is:
 \[
-\langle \Phi, n, (P, \sigma, \gamma) \downarrow (P \implies Q, \sigma', \gamma')
+\langle \Phi, n, (P, \sigma, \gamma) \rangle \downarrow (P \implies Q, \sigma', \gamma')
 \]
 
 Meaning if a Program $\Phi$ beginning at line $n$ is symbolically executed with a predicate $P$, a machine state $\sigma$ and a variable store $\gamma$, the result is a new predicate $P \implies Q$, a new machine state $\sigma'$ and new variable store $\gamma'$.
