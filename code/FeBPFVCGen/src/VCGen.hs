@@ -22,139 +22,6 @@ import Control.Monad.Trans.Reader
 import Control.Monad.Except
 import Control.Monad.Trans
 
--- type VCGenComp a = ReaderT LineNoProgram (StateT Judgment (
--- >>>>>>> Stashed changes
-
-
--- genVC :: A.Program -> Either VCGenError Judgment
--- genVC prog = innerGenVC initialJudgment (Util.numberInstrs prog)
-
-
-
-
--- innerGenVC :: Judgment -> LineNoProgram -> Either VCGenError Judgment
--- innerGenVC _ _ = Left "Not implemented yet"
--- -- innerGenVC judgment [] = Left "Invalid program: Program was empty before exit"
--- -- innerGenVC judgment [(_,A.Exit)] = genVC' judgment (0, A.Exit)
--- -- innerGenVC judgment (i:is) =
--- --   case genVC' judgment i of
--- --     Left err -> Left err
--- --     Right judgment' -> innerGenVC judgment' is
-  
-
--- <<<<<<< Updated upstream
--- =======
-
-
-
-
--- >>>>>>> Stashed changes
-
--- genVC' :: Judgment -> LineNoInstruction -> Either VCGenError Judgment
--- -- genVC' (Judgment vc ms cs) (lineno, A.Exit) =
--- --   case M.lookup R0 ms of
--- --     Nothing -> Left "INTERNAL ERROR: R0 not in map"
--- <<<<<<< Updated upstream
--- =======
--- --     -- Just (SUnVar _) ->  -- Left "Invalid Program: R0 not initialized at exit"      
--- >>>>>>> Stashed changes
--- --     Just _ ->
--- --       let vc' = addImpl vc (PS (Geq (SVar "R0_init") (SImm 1)))
--- --       in Right (Judgment vc' ms cs)
-      
--- -- genVC' (Judgment vc ms cs) (lineno, A.Binary A.B64 A.Mov (A.Reg d) (Left (A.Reg s)))  =
--- --                          let rd = reg2reg (A.Reg d)
--- --                              rs = reg2reg (A.Reg s)
--- --                          in case M.lookup rs ms of
--- --                            Nothing -> Left "Key not in map"
--- --                            -- Source is not initialized, so "illegal" read
--- <<<<<<< Updated upstream
--- =======
--- --                            -- Just (SUnVar _) ->
-                             
--- >>>>>>> Stashed changes
--- --                            Just sexp ->
--- --                              case M.lookup rd cs of
--- --                                Nothing -> Left "INTERNAL ERROR"
--- --                                Just consts ->
--- --                                  let newConst = (show rd ++ "_" ++ show lineno)
--- --                                      newConsts = M.insert rd (newConst:consts) cs
--- --                                      -- We need to ensure source has been initialised before we read it
--- --                                      initImpl1 = PS (Eq (SVar ("R" ++ show s ++ "_init")) (SImm 1))
--- --                                      -- If we initialise r_d, we add an implication that rd_init = 1,
--- --                                      -- before the "real" implication we want to add
--- --                                      initImpl2 = PS (Eq (SVar ("R" ++ show d ++ "_init")) (SImm 1))
--- --                                  in
--- --                                    case M.lookup rd ms of
--- --                                      Nothing -> Left "Internal error"
--- --                                      -- Just (SUnVar _) -> Right $ Judgment (addImpl (addImpl (addImpl vc initImpl1) initImpl2) (PS (Eq (SVar newConst) sexp))) (M.insert rd sexp ms) newConsts
--- --                                      Just _ ->  Right $ Judgment (addImpl vc (PS (Eq (SVar newConst) sexp))) (M.insert rd sexp ms) newConsts
-
--- -- genVC' (Judgment vc ms cs) (lineno, A.Binary A.B64 A.Mov (A.Reg d) (Right n))  =
--- --   let rd = reg2reg (A.Reg d)
--- --   in
--- --     case M.lookup rd cs of
--- --       Nothing -> Left "INTERNAL ERROR"
--- --       Just consts ->
--- --         let newConst = (show rd ++ "_" ++ show lineno)
--- --             newConsts = M.insert rd (newConst:consts) cs 
--- --             -- If we initialise r_d, we add an implication that rd_init = 1,
--- --             -- before the "real" implication we want to add
--- --             initImpl = PS (Eq (SVar ("R" ++ show d ++ "_init")) (SImm 1))
--- --         in
--- --           case M.lookup rd ms of
--- --             Nothing -> Left "Internal error"
--- --             -- Just (SUnVar _) -> Right $ Judgment (addImpl (addImpl vc initImpl) (PS (Eq (SVar newConst) (SImm (fromIntegral n))))) (M.insert (reg2reg (A.Reg d)) (SImm (fromIntegral n)) ms) newConsts 
--- --             Just _ -> Right $ Judgment (addImpl vc (PS (Eq (SVar newConst) (SImm (fromIntegral n))))) (M.insert (reg2reg (A.Reg d)) (SImm (fromIntegral n)) ms) newConsts 
-
--- -- genVC' (Judgment vc ms cs) (lineno, A.Binary A.B64 A.Add (A.Reg d) (Right n))  =
--- --   let rd = reg2reg (A.Reg d)
--- --   in
--- --     case M.lookup rd cs of
--- --       Nothing -> Left "INTERNAL ERROR"
--- --       Just consts ->
--- --         let newConst = (show rd ++ "_" ++ show lineno)
--- --             newConsts = M.insert rd (newConst:consts) cs
--- --         in Right $ Judgment (addImpl vc (PS (Eq (SVar newConst) (SAdd (SVar (head consts)) (SImm (fromIntegral n)))))) (M.insert (reg2reg (A.Reg d)) (SAdd (SVar newConst) (SImm (fromIntegral n))) ms) newConsts
-
--- -- genVC' (Judgment vc ms cs) (lineno, A.Binary A.B64 A.Add (A.Reg d) (Left (Reg s)))  =
--- --   let rd = reg2reg (A.Reg d)
--- --       rs = reg2reg (A.Reg s)
--- --   in case M.lookup rs ms of
--- --     Nothing -> Left "Key not in map"
--- --     Just sexp ->
--- --       case M.lookup rs cs of
--- --         Nothing -> Left "INTERNAL ERROR"
--- --         Just srcConsts ->
--- --           case M.lookup rd cs of
--- --             Nothing -> Left "INTERNAL ERROR"
--- --             Just dstConsts ->
--- --               let newConst = (show rd ++ "_" ++ show lineno)
--- --                   newConsts = M.insert rd (newConst:dstConsts) cs
--- --               in Right $ Judgment (addImpl vc (PS (Eq (SVar newConst) (SAdd (SVar (head dstConsts)) (SVar (head srcConsts)))))) (M.insert (reg2reg (A.Reg d)) (SAdd (SVar newConst) (SVar (head srcConsts))) ms) newConsts
-
-
--- -- genVC' (Judgment vc ms cs) (lineno, A.Binary A.B64 A.Div (A.Reg d) (Left (Reg s)))  =
--- --   let rd = reg2reg (A.Reg d)
--- --       rs = reg2reg (A.Reg s)
--- --   in case M.lookup rs ms of
--- --     Nothing -> Left "Key not in map"
--- --     Just sexp ->
--- --       case M.lookup rs cs of
--- --         Nothing -> Left "INTERNAL ERROR"
--- --         Just srcConsts ->
--- --           case M.lookup rd cs of
--- --             Nothing -> Left "INTERNAL ERROR"
--- --             Just dstConsts ->
--- --               let newConst = (show rd ++ "_" ++ show lineno)
--- --                   newConsts = M.insert rd (newConst:dstConsts) cs
--- --                   notZeroPred = PS (Neq (SVar (head srcConsts)) (SImm 0))
--- --                   postDivPred = PS (Eq (SVar newConst) (SDiv (SVar (head dstConsts)) (SVar (head srcConsts))))
--- --               in
--- --                 Right $ Judgment (addImpl vc (addImpl notZeroPred postDivPred)) (M.insert rd (SDiv (SVar (head dstConsts)) (SVar (head srcConsts))) ms) newConsts
-                
---genVC' _ _ = Left "Not implemented yet"
-
 
 
 -- Adds the default header of options to the smtlib2 output
@@ -170,34 +37,13 @@ withDefaultPostamble (S.Script cmds) =
   S.Script $ cmds ++ [ CmdCheckSat, CmdExit ]
 
 withDefaults = withDefaultOptions . withDefaultPostamble
--- getConstDecl :: (Int,A.Instruction)  -> [S.Command] -> [S.Command]
--- getConstDecl (line, Binary B32 _  (Reg regname) _) acc =  (declFun32 $ "r" ++ show regname ++ "_" ++ show line) : acc
--- getConstDecl (line, Binary B64 _  (Reg regname) _) acc =  (declFun64 $ "r" ++ show regname ++ "_" ++ show line) : acc
--- getConstDecl (line, Unary B32 _  (Reg regname)) acc =  (declFun32 $ "r" ++ show regname ++ "_" ++ show line) : acc
--- getConstDecl (line, Unary B64 _  (Reg regname)) acc =  (declFun64 $ "r" ++ show regname ++ "_" ++ show line) : acc
-
--- getConstDecl _ acc = acc
-
--- getConstDecls :: A.Program -> S.Script
--- getConstDecls = S.Script . foldr getConstDecl [] . numberInstrs
 
 
 
 
-
-declFunR0Init = CmdDeclareFun (N "r0_init") [] (SBV.tBitVec 64)
--- declFun32 name = CmdDeclareFun (N name) [] (tBitVec 32)
+--declFunR0Init = CmdDeclareFun (N "r0_init") [] (SBV.tBitVec 64)
 declFun64 name = CmdDeclareFun (N name) [] (SBV.tBitVec 64)
 funRef name = App (I (N name) []) Nothing []
-
--- -- "good_div.smt2" program
--- t = pp $ withDefaultOptions $ Script [ declFun64 "r0_1", declFun64 "r1_2", declFun64 "r0_3"
---                           -- Actual assertion below
---                         ,CmdAssert (SC.not $ (SC.==>) ((SC.===) (funRef "r0_1") (bv 10 64) ) ((SC.==>) ((SC.===) (funRef "r1_2") (bv 2 64)) (SC.not ((SC.===) (funRef "r1_2") (bv 0 64 )))))
---                         ,CmdCheckSat
---                         ,CmdExit
---                         ]
-
 
 
 judgmentToConstantDeclarations :: Judgment -> S.Script
@@ -208,7 +54,6 @@ judgmentToConstantDeclarations (Judgment _ _ cs) =
 sexprToScript :: SExpr -> S.Expr
 sexprToScript (SImm w) = SBV.bv (fromIntegral w) 64
 sexprToScript (SVar name) = funRef name
--- sexprToScript (SUnVar uninitReg) = undefined
 sexprToScript (SAdd s1 s2) =
   let s1' = sexprToScript s1
       s2' = sexprToScript s2
