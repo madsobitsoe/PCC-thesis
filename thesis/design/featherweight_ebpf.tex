@@ -31,3 +31,10 @@ Therefore it is not a part of the verification conditions I will generate. Inste
 
 \subsubsection*{Instruction set}
 
+\begin{tabular}{|l|l|} \hline
+  \textbf{Assembly mnemonic} & \textbf{eBPF equivalent}  \\ \hline
+  $\mathrm{mov} ~ r_d, r_s$  & $\mathrm{mov64} ~ r_d, r_s$\\ \hline
+  $\mathrm{mov} ~ r_d, IMM$  &   $\mathrm{mov64} ~ r_d, IMM$\\ \hline  
+  $\mathrm{div} ~ r_d, r_s$  & $\mathrm{div64} ~ r_d, r_s $\\ \hline
+  $\mathrm{exit}$ &  \texttt{exit} \\ \hline  
+\end{tabular}
