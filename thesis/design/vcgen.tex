@@ -1,3 +1,52 @@
+\subsection{VCGen new attempt with WP}
+\label{subsec:vcgen_new_attempt_with_wp}
+
+
+Expressions of FWeBPF are defined by the grammar
+\begin{figure}[H]
+  \centering
+  \begin{tabular}{lclr}
+    $e$ & $::=$ & $X$ & (A variable) \\
+      & $|$ & $N$ & (An immediate value $\in 0..2^{32}-1$ ) \\
+      & $|$ & $R$ & (A register) \\
+      % & $|$ & $e_1 = e_2$ & (Equality of two expressions) \\
+      % & $|$ & $e_1 != e_2$ & (Inequality of two expressions) \\
+      & $|$ & $e_1 \oslash e_2$ & (Unsigned division of two expressions with 64-bit wrapping) \\    
+\end{tabular}    
+\end{figure}
+
+Expression Predicates of FWeBPF are defined by the grammar
+\begin{figure}[H]
+  \centering
+  \begin{tabular}{lclr}
+    $ep$ & $::=$ & \texttt{true} & \\
+     & $|$ & $e_1 = e_2$ & (Equality of two expressions) \\    
+      & $|$ & $e_1 \neq e_2$ & (Inequality of two expressions) \\
+\end{tabular}    
+\end{figure}
+
+
+Statements of FWeBPF are defined by the grammar
+\begin{figure}[H]
+  \centering
+  \begin{tabular}{lclr}
+    $s$ & $::=$ & \texttt{exit} & (Exits the program with \texttt{r0} as return value) \\
+    & $|$ & $x := e$ & (assignment) \\
+\end{tabular}    
+\end{figure}
+
+
+The rules for WP computation are defined by
+\begin{figure}[H]
+  \centering
+  \begin{tabular}{rcl}
+    WP(\texttt{exit},Q) & $=$ & \texttt{true} \\
+    WP($x := e_1 \oslash e_2$) & $=$ & $\forall v . (e_2 \neq 0 ~\&\& ~ (v = e_1 \oslash e_2 \implies Q[x \leftarrow v]))$\\
+    WP($x := e$, Q) & $=$ & $\forall v . v = e \implies Q[x \leftarrow v]$\\
+\end{tabular}    
+\end{figure}
+
+
 \subsection{VCGen}
 \label{subsec:vcgen}
 
