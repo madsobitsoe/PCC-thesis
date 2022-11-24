@@ -39,10 +39,11 @@ data Statement =
     -- Mov rd, e
   | SAssign Register Expression
   -- Necessary? 
-  -- | SSeq Statement Statement
+  | SSeq Statement Statement
+  | SITE ExpressionPredicate Statement Statement
   deriving (Eq, Show)    
 
-type FWProgram = [Statement]
+type FWProgram = Statement
 
 data Predicate =
     PEP ExpressionPredicate
@@ -52,6 +53,7 @@ data Predicate =
   | PAll Expression Predicate
   | PAnd Predicate Predicate
   | PImplies Predicate Predicate
+  | PITE ExpressionPredicate Predicate Predicate
   deriving (Eq, Show)
 
 

@@ -31,7 +31,9 @@ Statements of FWeBPF are defined by the grammar
   \centering
   \begin{tabular}{lclr}
     $s$ & $::=$ & \texttt{exit} & (Exits the program with \texttt{r0} as return value) \\
-    & $|$ & $x := e$ & (assignment) \\
+        & $|$   & $x := e$      & (assignment) \\
+        & $|$   & $s_1 ; s_2$   & (sequence) \\
+        & $|$   & $\mathrm{if} ~ ep ~ \mathrm{then} ~ s_1 ~ \mathrm{else} ~ s_2$ & (conditional) \\
 \end{tabular}    
 \end{figure}
 
@@ -43,8 +45,26 @@ The rules for WP computation are defined by
     WP(\texttt{exit},Q) & $=$ & \texttt{true} \\
     WP($x := e_1 \oslash e_2$) & $=$ & $\forall v . (e_2 \neq 0 ~\&\& ~ (v = e_1 \oslash e_2 \implies Q[x \leftarrow v]))$\\
     WP($x := e$, Q) & $=$ & $\forall v . v = e \implies Q[x \leftarrow v]$\\
+    WP($s_1 ; s_2$, Q) & $=$ & WP($s_1$, WP($s_2, Q$)) \\
+    WP($\mathrm{if} ~ ep ~ \mathrm{then} ~ s_1 ~ \mathrm{else} ~ s_2$, $Q$) & $=$ & $\mathrm{if} ~ ep ~ \mathrm{then} ~ \mathrm{WP}(s_1, Q) ~ \mathrm{else} ~ \mathrm{WP}(s_2,Q)$
 \end{tabular}    
 \end{figure}
+
+
+\subsubsection*{Translating eBPF to FWeBPF}
+
+\begin{figure}[H]
+  \centering
+  \begin{tabular}{rcl}
+    \textbf{eBPF assembly} & & \textbf{FWeBPF} \\
+    T(\texttt{exit} : $prog)$ & $=$ & \texttt{exit} \\
+    T($\mathrm{mov} ~ r_d, src : prog$ ) & $=$ & $r_d := src ; T(prog)$ \\
+    T($\mathrm{div} ~ r_d, r_s : prog$) & $=$ & $r_d := r_d \oslash r_s ; T(prog)$ \\
+    T($\mathrm{jeq ~ r_d, r_s, +off} : prog$) & $=$ & $\mathrm{if} ~ (r_d = r_s) ~ \mathrm{then} ~ T(prog[off..]) ~ \mathrm{else} ~ T(prog)$ \\
+\end{tabular}    
+\end{figure}
+
+
 
 
 \subsection{VCGen}
