@@ -83,6 +83,12 @@ testProgDivSeries =
   ]
 
 
+testProgRegDivR1Noninit :: A.Program
+testProgRegDivR1Noninit = [ Binary B64 Mov (Reg 0) (Right 10)
+                 , Binary B64 Div (Reg 0) (Left (Reg 1))
+                 , Exit ]
+
+
 run :: Program -> IO ()
 run p =
   do
@@ -101,3 +107,4 @@ main =
     run testProgOverWriteMovMultiple
     run testProgOverWriteMovAfterDiv
     run testProgDivSeries
+    run testProgRegDivR1Noninit
