@@ -27,7 +27,7 @@ pp :: Predicate -> String
 pp (PEP ep) = ppEP ep
 pp (PNot p) = [toEnum 172] ++ pp p
 pp (PAll e p) = [toEnum 8704] ++ ppE e ++ ". " ++ pp p
-pp (PAnd p1 p2) = "(" ++ pp p1 ++ ") " ++ [toEnum 8743] ++ " (" ++ pp p2 ++ "))"
+pp (PAnd p1 p2) = "(" ++ pp p1 ++ ") " ++ [toEnum 8743] ++ " (" ++ pp p2 ++ ")"
 pp (PImplies p1 p2) = pp p1 ++ " " ++ [toEnum 8658] ++ " (" ++ pp p2 ++ ")"
 
 
