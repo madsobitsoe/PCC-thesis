@@ -8,6 +8,7 @@ import Text.Printf
 import Util
 import Definitions
 
+import Debug.Trace
 
 -- Pretty printing of expressions
 ppE :: Expression -> String
@@ -21,7 +22,7 @@ ppEP :: ExpressionPredicate -> String
 ppEP EPTrue = "true"
 ppEP (EPEq e1 e2) = ppE e1 ++ " = " ++ ppE e2
 ppEP (EPNeq e1 e2) = ppE e1 ++ " != " ++ ppE e2
-
+ppEP (EPGTE e1 e2) = ppE e1 ++ " >= " ++ ppE e2
 -- Pretty printing of predicates
 pp :: Predicate -> String
 pp (PEP ep) = ppEP ep
@@ -55,7 +56,7 @@ ppEP_smt :: ExpressionPredicate -> String
 ppEP_smt EPTrue = "true"
 ppEP_smt (EPEq e1 e2) = "(= " ++ ppE_smt e1 ++ " " ++ ppE_smt e2 ++ ")"
 ppEP_smt (EPNeq e1 e2) = "(not " ++ ppEP_smt (EPEq e1 e2) ++ ")"
-
+ppEP_smt (EPGTE e1 e2) = "(bvuge " ++ ppE_smt e1 ++ " " ++ ppE_smt e2 ++ ")"
 -- smt-lib printing of predicates
 ppP_smt :: Int -> Predicate -> String
 ppP_smt d (PEP ep) = ppIndent d ++ ppEP_smt ep
@@ -63,7 +64,7 @@ ppP_smt d (PNot p) = ppIndent d ++ "(not " ++ ppP_smt d p ++ ")"
 ppP_smt d (PAnd p1 p2) = "\n" ++ ppIndent d ++ "(and \n" ++ ppP_smt (d+1) p1 ++ ppP_smt (d+1) p2 ++ "\n" ++ ppIndent d ++ ")"
 ppP_smt d (PImplies p1 p2) = "\n" ++ ppIndent d ++ "(=> \n" ++ ppP_smt (d+1) p1 ++ "\n" ++ ppP_smt (d+1) p2 ++ "\n" ++ ppIndent d ++ ")"
 ppP_smt d (PAll e p) = ppIndent d ++ "(forall ((" ++ ppE_smt e ++ " (_ BitVec 64))) " ++ ppP_smt (d+1) p ++ "\n" ++ ppIndent d ++ ")"
-ppP_smt d (PITE ep p1 p2) = ppIndent d ++ "(ite " ++ ppEP_smt ep ++ ppP_smt d p1 ++ ppP_smt d p2 ++ ")"
+ppP_smt d (PITE ep p1 p2) = ppIndent d ++ "(ite " ++ ppEP_smt ep ++ "\n" ++ ppP_smt (d+1) p1 ++ "\n" ++ ppP_smt (d+1) p2 ++ ")"
 
 pp_smt :: Predicate -> String
 pp_smt predicate = ppP_smt 1 predicate
@@ -77,11 +78,12 @@ ebpfToFWeBPF ((A.JCond Jeq rd (Right imm) off):prog) =
   let rd' = EReg $ reg2reg rd
       imm' = EImm (fromIntegral imm)
       ep = EPEq rd' imm'
-      strue = ebpfToFWeBPF $ drop off prog
+      off' = fromIntegral off
+      strue = ebpfToFWeBPF $ drop off' prog
       sfalse = ebpfToFWeBPF prog
-      off = fromIntegral off
-  in SITE ep strue sfalse
-ebpfToFWeBPF (i:prog) = SSeq (ebpfToFWeBPF' i) (ebpfToFWeBPF prog)
+    in SITE ep strue sfalse
+ebpfToFWeBPF (i:prog) =
+  SSeq (ebpfToFWeBPF' i) (ebpfToFWeBPF prog)
 -- ebpfToFWeBPF prog = map ebpfToWeBPF' prog
 
 ebpfToFWeBPF' :: A.Instruction -> Statement
@@ -187,8 +189,8 @@ wp_inst (SAssign rd e2) q =
   in
     PAll v (PImplies ep (substitute_in_predicate x v q))
 
--- wp_inst (SSeq s1 s2) q =
---   wp_inst s1 (wp_inst s2 q)
+wp_inst (SSeq s1 s2) q =
+  wp_inst s1 (wp_inst s2 q)
 
 wp_inst (SITE ep st se) q =
   let st' = wp_inst st q
@@ -197,7 +199,8 @@ wp_inst (SITE ep st se) q =
 
 wp_prog' :: FWProgram -> Predicate -> Predicate
 -- wp_prog' [] q = q
-wp_prog' (SSeq s1 s2) q = wp_inst s1 (wp_prog' s2 q)
+wp_prog' (SSeq s1 s2) q =
+  wp_inst s1 (wp_prog' s2 q)
 -- wp_prog' (inst:prog) q = wp_inst inst $ wp_prog' prog q
 wp_prog' s q = wp_inst s q
 -- wp_prog _ _ = undefined
@@ -205,3 +208,8 @@ wp_prog :: A.Program -> Predicate -> Predicate
 wp_prog = wp_prog' . ebpfToFWeBPF
 wp :: A.Program -> Predicate
 wp prog = wp_prog prog (PEP EPTrue)
+
+
+
+withInitialPre :: A.Program -> Predicate
+withInitialPre prog = PAll (EVar "n") (PImplies (PEP (EPGTE (EVar "n") (EImm 1))) (substitute_in_predicate (EReg R2) (EVar "n") $ wp prog))

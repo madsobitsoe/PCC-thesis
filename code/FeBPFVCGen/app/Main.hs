@@ -90,19 +90,18 @@ testProgRegDivR1Noninit = [ Binary B64 Mov (Reg 0) (Right 10)
 
 testProgJeq :: A.Program
 testProgJeq = [ Binary B64 Mov (Reg 0) (Right 10)
-              , JCond Jeq (Reg 1) (Right 0) 1
-              , Binary B64 Div (Reg 0) (Left (Reg 1))
+              , JCond Jeq (Reg 2) (Right 0) 1
+              , Binary B64 Div (Reg 0) (Left (Reg 2))
               , Exit ]
 
 
 run :: Program -> IO ()
 run p =
   do
-    putStrLn "So far so good"
-    let predicate = wp p
-    putStrLn "Woop"
-    putStrLn $ show predicate
-    putStrLn $ pp predicate
+    let predicate = withInitialPre p
+    putStrLn $ "Program: " ++ show p
+    putStrLn $ "Predicate: " ++ show predicate
+    putStrLn $ "prettified predicate: " ++ pp predicate
     putStrLn "As smtlib2:"
     putStrLn $ with_smt_lib_wrapping $ pp_smt predicate
 

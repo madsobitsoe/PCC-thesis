@@ -32,6 +32,7 @@ data ExpressionPredicate =
     EPTrue
   | EPEq Expression Expression
   | EPNeq Expression Expression
+  | EPGTE Expression Expression
   deriving (Eq, Show)
 
 data Statement =
