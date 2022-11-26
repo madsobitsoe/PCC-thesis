@@ -37,9 +37,7 @@ data ExpressionPredicate =
 
 data Statement =
     SExit
-    -- Mov rd, e
   | SAssign Register Expression
-  -- Necessary? 
   | SSeq Statement Statement
   | SITE ExpressionPredicate Statement Statement
   deriving (Eq, Show)    
@@ -49,81 +47,10 @@ type FWProgram = Statement
 data Predicate =
     PEP ExpressionPredicate
   | PNot Predicate
-  -- | PEq ExpressionPredicate ExpressionPredicate
     -- \all v . v = e => Q[x <- v]
   | PAll Expression Predicate
   | PAnd Predicate Predicate
   | PImplies Predicate Predicate
   | PITE ExpressionPredicate Predicate Predicate
   deriving (Eq, Show)
-
-
--- -- Corresponds to (Expressions E) in report
--- data SExpr =
--- --    SImm Word64
---     SImm Word32  
---   | SVar VName
---   -- | SUnVar Uninit
---   -- | SAdd SExpr SExpr
---   -- | SSub SExpr SExpr
---   | SDiv SExpr SExpr
---   -- | SXor SExpr SExpr
---   deriving (Show)
-
--- -- Corresponds to (Expression Predicates EP) in report
--- data PSExpr =
---     PTrue
---   -- | PFalse
---   | Eq SExpr SExpr
---   | Neq SExpr SExpr
---   | Geq SExpr SExpr
---   -- | Lt SExpr SExpr
---   deriving (Show)
-
--- -- Corresponds to (Predicates P) in report
--- data Pred =
---     PS PSExpr
---   -- | Not Pred 
---   | LAnd Pred Pred
---   | Impl Pred Pred
---   deriving (Show)
-
--- type VCGenError = String
--- type MachineState = M.Map Register SExpr
-
--- type Constants = M.Map Register [VName]
-
--- initialConstants = M.fromList [ (R0, [])
---                               , (R1, ["m"])
---                               , (R2, ["n"])
---                               , (R3, [])
---                               , (R4, [])
---                               , (R5, [])
---                               , (R6, [])
---                               , (R7, [])
---                               , (R8, [])
---                               , (R9, [])
---                               , (R10,["fp"])
---                               ]
-
-
--- initialMachineState = M.fromList [ (R1, SVar "m")
---                                  , (R2, SVar "n")
---                                  , (R10, SVar "fp")
---                                  ]
-
-
--- -- initialJudgment = Judgment (Impl (PS (Geq (SVar "n") (SImm 1))) (PS PTrue)) initialMachineState initialConstants
--- initialJudgment = Judgment (PS (Geq (SVar "n") (SImm 1))) initialMachineState initialConstants
-
--- data Judgment = Judgment Pred MachineState Constants
---   deriving (Show)
-
--- type LineNoInstruction = (Int, A.Instruction)
--- type LineNoProgram = M.Map Int A.Instruction
-
-
--- -- Monad definitions
--- --type VCGenComp a = ReaderT LineNoProgram (StateT Judgment (Except VCGenError)) a
--- type VCGenComp a = ReaderT LineNoProgram (StateT Judgment (Except VCGenError)) a
 

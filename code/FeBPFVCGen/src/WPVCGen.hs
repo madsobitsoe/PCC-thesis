@@ -4,11 +4,8 @@ where
 
 import Ebpf.Asm as A
 import Data.Word
-import Text.Printf
 import Util
 import Definitions
-
-import Debug.Trace
 
 -- Pretty printing of expressions
 ppE :: Expression -> String
@@ -32,12 +29,11 @@ pp (PAnd p1 p2) = "(" ++ pp p1 ++ ") " ++ [toEnum 8743] ++ " (" ++ pp p2 ++ ")"
 pp (PImplies p1 p2) = pp p1 ++ " " ++ [toEnum 8658] ++ " (" ++ pp p2 ++ ")"
 pp (PITE ep p1 p2) = "if " ++ ppEP ep ++ " then " ++ pp p1 ++ " else " ++ pp p2
 
-toHex :: Word32 -> String
-toHex x = printf "#x%016x" x
-
+-- indent when pretty printing
 ppIndent :: Int -> String
 ppIndent d = replicate (d*2) ' '
 
+-- wrap smtlib-pretty printed predicate in the "boiler plate" needed to have a valid smtlib2 program for cvc5
 with_smt_lib_wrapping :: String -> String
 with_smt_lib_wrapping s =
   "(set-logic BV)\n(set-option :produce-proofs true)\n(set-option :proof-format-mode lfsc)\n(set-option :dump-proofs true)\n\n" ++
@@ -46,18 +42,20 @@ with_smt_lib_wrapping s =
   "\n))\n(check-sat)\n(exit)\n"
 
 
+-- Pretty print expression to smtlib2 format
 ppE_smt :: Expression -> String
 ppE_smt (EVar s) = s
 ppE_smt (EImm imm) = toHex imm
 ppE_smt (EReg reg) = show reg
 ppE_smt (EDivReg rd rs) = "(bvudiv " ++ ppE_smt rd ++ " " ++ ppE_smt rs ++ ")"
 
+-- Pretty print expression predicate to smtlib2 format
 ppEP_smt :: ExpressionPredicate -> String
 ppEP_smt EPTrue = "true"
 ppEP_smt (EPEq e1 e2) = "(= " ++ ppE_smt e1 ++ " " ++ ppE_smt e2 ++ ")"
 ppEP_smt (EPNeq e1 e2) = "(not " ++ ppEP_smt (EPEq e1 e2) ++ ")"
 ppEP_smt (EPGTE e1 e2) = "(bvuge " ++ ppE_smt e1 ++ " " ++ ppE_smt e2 ++ ")"
--- smt-lib printing of predicates
+-- Pretty print predicate to smtlib2 format
 ppP_smt :: Int -> Predicate -> String
 ppP_smt d (PEP ep) = ppIndent d ++ ppEP_smt ep
 ppP_smt d (PNot p) = ppIndent d ++ "(not " ++ ppP_smt d p ++ ")"
@@ -66,6 +64,7 @@ ppP_smt d (PImplies p1 p2) = "\n" ++ ppIndent d ++ "(=> \n" ++ ppP_smt (d+1) p1 
 ppP_smt d (PAll e p) = ppIndent d ++ "(forall ((" ++ ppE_smt e ++ " (_ BitVec 64))) " ++ ppP_smt (d+1) p ++ "\n" ++ ppIndent d ++ ")"
 ppP_smt d (PITE ep p1 p2) = ppIndent d ++ "(ite " ++ ppEP_smt ep ++ "\n" ++ ppP_smt (d+1) p1 ++ "\n" ++ ppP_smt (d+1) p2 ++ ")"
 
+-- Pretty print predicate to smtlib2 format
 pp_smt :: Predicate -> String
 pp_smt predicate = ppP_smt 1 predicate
 
@@ -84,7 +83,7 @@ ebpfToFWeBPF ((A.JCond Jeq rd (Right imm) off):prog) =
     in SITE ep strue sfalse
 ebpfToFWeBPF (i:prog) =
   SSeq (ebpfToFWeBPF' i) (ebpfToFWeBPF prog)
--- ebpfToFWeBPF prog = map ebpfToWeBPF' prog
+
 
 ebpfToFWeBPF' :: A.Instruction -> Statement
 ebpfToFWeBPF' (A.Exit) = SExit
@@ -161,7 +160,6 @@ substitute_in_predicate old new (PEP (EPNeq e1 e2)) =
   in (PEP (EPNeq e1' e2'))
 
 substitute_in_predicate old new (PAll e p) =
-  -- let ep' = substitute_in_expression_predicate e ep
   let p' = substitute_in_predicate old new p
   in PAll e p'
 
@@ -198,18 +196,16 @@ wp_inst (SITE ep st se) q =
   in PITE ep st' se'
 
 wp_prog' :: FWProgram -> Predicate -> Predicate
--- wp_prog' [] q = q
+
 wp_prog' (SSeq s1 s2) q =
   wp_inst s1 (wp_prog' s2 q)
--- wp_prog' (inst:prog) q = wp_inst inst $ wp_prog' prog q
 wp_prog' s q = wp_inst s q
--- wp_prog _ _ = undefined
 wp_prog :: A.Program -> Predicate -> Predicate
 wp_prog = wp_prog' . ebpfToFWeBPF
 wp :: A.Program -> Predicate
 wp prog = wp_prog prog (PEP EPTrue)
 
 
-
+-- Generate VC for a program and prepend the initial guarantees `Pre`
 withInitialPre :: A.Program -> Predicate
 withInitialPre prog = PAll (EVar "n") (PImplies (PEP (EPGTE (EVar "n") (EImm 1))) (substitute_in_predicate (EReg R2) (EVar "n") $ wp prog))
