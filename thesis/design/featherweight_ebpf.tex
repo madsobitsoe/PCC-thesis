@@ -3,12 +3,13 @@
 Will contain definition of the subset of eBPF I will be covering and working with.
 
 
-Featherweight-eBPF is a simplified, small subset of the eBPF ISA.
+Featherweight-eBPF is an IMP-like language representing a small subset of the eBPF ISA.
 
 Main restrictions:
 \begin{itemize}
 \item Only 64-bit values and operations
-\item No jumps or branching. Only straight-line programs.
+  % \item No jumps or branching. Only straight-line programs.
+  \item Only forward jumps are allowed in programs. No looping.
 \item Along with a pointer to the program context (``some memory'') passed to the program in \texttt{r1}, the size of that memory that is valid to read is also passed in \texttt{r2}. 
 \end{itemize}
 
@@ -29,12 +30,68 @@ This means \texttt{r0} should be initialized before an exit-instruction is reach
 Ensuring registers are initialized before they are read is a security policy, not a safety policy.
 Therefore it is not a part of the verification conditions I will generate. Instead the derivation rules will ensure a register read is valid, so programs violating this will not be ``well formed'' and will not produce a verification condition. 
 
-\subsubsection*{Instruction set}
+% \subsubsection*{Instruction set}
 
-\begin{tabular}{|l|l|} \hline
-  \textbf{Assembly mnemonic} & \textbf{eBPF equivalent}  \\ \hline
-  $\mathrm{mov} ~ r_d, r_s$  & $\mathrm{mov64} ~ r_d, r_s$\\ \hline
-  $\mathrm{mov} ~ r_d, IMM$  &   $\mathrm{mov64} ~ r_d, IMM$\\ \hline  
-  $\mathrm{div} ~ r_d, r_s$  & $\mathrm{div64} ~ r_d, r_s $\\ \hline
-  $\mathrm{exit}$ &  \texttt{exit} \\ \hline  
-\end{tabular}
+% \begin{tabular}{|l|l|} \hline
+%   \textbf{Assembly mnemonic} & \textbf{eBPF equivalent}  \\ \hline
+%   $\mathrm{mov} ~ r_d, r_s$  & $\mathrm{mov64} ~ r_d, r_s$\\ \hline
+%   $\mathrm{mov} ~ r_d, IMM$  &   $\mathrm{mov64} ~ r_d, IMM$\\ \hline  
+%   $\mathrm{div} ~ r_d, r_s$  & $\mathrm{div64} ~ r_d, r_s $\\ \hline
+%   $\mathrm{exit}$ &  \texttt{exit} \\ \hline  
+    %   \end{tabular}
+
+
+
+\subsubsection{Defining FWeBPF}
+
+
+Expressions of FWeBPF are defined by the grammar
+\begin{figure}[H]
+  \centering
+  \begin{tabular}{lclr}
+    $e$ & $::=$ & $X$ & (A variable) \\
+      & $|$ & $N$ & (An immediate value $\in 0..2^{32}-1$ ) \\
+      & $|$ & $R$ & (A register) \\
+      % & $|$ & $e_1 = e_2$ & (Equality of two expressions) \\
+      % & $|$ & $e_1 != e_2$ & (Inequality of two expressions) \\
+      & $|$ & $e_1 \oslash e_2$ & (Unsigned division of two expressions with 64-bit wrapping) \\    
+\end{tabular}    
+\end{figure}
+
+Expression Predicates of FWeBPF are defined by the grammar
+\begin{figure}[H]
+  \centering
+  \begin{tabular}{lclr}
+    $ep$ & $::=$ & \texttt{true} & \\
+     & $|$ & $e_1 = e_2$ & (Equality of two expressions) \\    
+     & $|$ & $e_1 \neq e_2$ & (Inequality of two expressions) \\
+     & $|$ &  $e_1 \geq e_2$ & (Greater than or equal of two expressions) \\
+\end{tabular}    
+\end{figure}
+
+
+Statements of FWeBPF are defined by the grammar
+\begin{figure}[H]
+  \centering
+  \begin{tabular}{lclr}
+    $s$ & $::=$ & \texttt{exit} & (Exits the program with \texttt{r0} as return value) \\
+        & $|$   & $x := e$      & (assignment) \\
+        & $|$   & $s_1 ; s_2$   & (sequence) \\
+        & $|$   & $\mathrm{if} ~ ep ~ \mathrm{then} ~ s_1 ~ \mathrm{else} ~ s_2$ & (conditional) \\
+\end{tabular}    
+\end{figure}
+
+
+\subsubsection{Translating eBPF to FWeBPF}
+
+\begin{figure}[H]
+  \centering
+  \begin{tabular}{rcl}
+    \textbf{eBPF assembly} & & \textbf{FWeBPF} \\
+    T(\texttt{exit} : $prog)$ & $=$ & \texttt{exit} \\
+    T($\mathrm{mov} ~ r_d, src : prog$ ) & $=$ & $r_d := src ; T(prog)$ \\
+    T($\mathrm{div} ~ r_d, r_s : prog$) & $=$ & $r_d := r_d \oslash r_s ; T(prog)$ \\
+    T($\mathrm{jeq ~ r_d, r_s, +off} : prog$) & $=$ & $\mathrm{if} ~ (r_d = r_s) ~ \mathrm{then} ~ T(prog[\mathrm{off}..]) ~ \mathrm{else} ~ T(prog)$ \\
+\end{tabular}    
+\end{figure}
+
