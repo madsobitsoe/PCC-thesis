@@ -13,7 +13,7 @@ ppE :: Expression -> String
 ppE (EVar s) = s
 ppE (EImm imm) = show imm
 -- ppE (EReg reg) = show reg
-ppE (EDivReg rd rs) = ppE rd ++ " / " ++ ppE rs
+ppE (EDiv rd src) = ppE rd ++ " / " ++ ppE src
 
 -- Pretty printing of expression predicates
 ppEP :: ExpressionPredicate -> String
@@ -47,7 +47,7 @@ with_smt_lib_wrapping s =
 ppE_smt :: Expression -> String
 ppE_smt (EVar s) = s
 ppE_smt (EImm imm) = toHex imm
-ppE_smt (EDivReg rd rs) = "(bvudiv " ++ ppE_smt rd ++ " " ++ ppE_smt rs ++ ")"
+ppE_smt (EDiv rd src) = "(bvudiv " ++ ppE_smt rd ++ " " ++ ppE_smt src ++ ")"
 
 -- Pretty print expression predicate to smtlib2 format
 ppEP_smt :: ExpressionPredicate -> String
@@ -97,7 +97,7 @@ freshVar predicate =
     head unused
 
 substitute_in_expression :: Expression -> Expression -> Expression -> Expression
-substitute_in_expression old new (EDivReg rd rs) = EDivReg (substitute_in_expression old new rd) (substitute_in_expression old new rs)
+substitute_in_expression old new (EDiv rd src) = EDiv (substitute_in_expression old new rd) (substitute_in_expression old new src)
 substitute_in_expression old new e =
   if old == e then new
   else e
@@ -150,11 +150,11 @@ wp_inst :: FWProgram -> Index -> Predicate -> Predicate
 wp_inst prog idx q =
   case prog V.! idx of
     Exit -> PEP EPTrue
-    Assign x (EDivReg e1 e2) ->
+    Assign x (EDiv e1 e2) ->
       let q' = wp_inst prog (idx+1) q
           (EVar v) = freshVar q'
           q'sub = substitute_in_predicate (EVar x) (EVar v) q'
-          ep = (PEP (EPEq (EVar v) (EDivReg e1 e2)))
+          ep = (PEP (EPEq (EVar v) (EDiv e1 e2)))
           notZeroAssert = PEP (EPNeq e2 (EImm 0))
       in PAll v (PAnd notZeroAssert (PImplies ep q'sub))
           
@@ -186,10 +186,15 @@ toFWProg' (A.Binary A.B64 A.Mov rd (Right imm)) =
       imm' = EImm (fromIntegral imm)
   in Assign vname imm'
 
+toFWProg' (A.Binary A.B64 A.Div rd (Right imm)) =
+  let (EVar vname) = reg2var rd 
+      imm' = EImm (fromIntegral imm)
+      in Assign vname (EDiv (EVar vname) imm')
+
 toFWProg' (A.Binary A.B64 A.Div rd (Left rs)) =
   let (EVar vname) = reg2var rd 
       rs' = reg2var rs
-      in Assign vname (EDivReg (EVar vname) rs')
+      in Assign vname (EDiv (EVar vname) rs')
 
 toFWProg' (A.JCond A.Jeq rd (Right imm) off) =
   let (EVar vname) = reg2var rd

@@ -12,7 +12,7 @@ type VName = String
 data Expression =
     EVar VName
   | EImm Word32
-  | EDivReg Expression Expression
+  | EDiv Expression Expression
   deriving (Eq, Show)
 
 data ExpressionPredicate =

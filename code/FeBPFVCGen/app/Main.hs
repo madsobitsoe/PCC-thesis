@@ -83,6 +83,16 @@ testProgDivSeries =
   ]
 
 
+testProgDivImm :: A.Program
+testProgDivImm =
+  [
+    Binary B64 Mov (Reg 0) (Right 8) -- r0 = 8
+  , Binary B64 Div (Reg 0) (Right 1) -- r0 = r0 / 1
+  , Binary B64 Div (Reg 0) (Right 42)     -- r0 = r0 / 42
+  , Exit
+  ]
+
+
 testProgRegDivR1Noninit :: A.Program
 testProgRegDivR1Noninit = [ Binary B64 Mov (Reg 0) (Right 10)
                  , Binary B64 Div (Reg 0) (Left (Reg 1))
@@ -116,3 +126,4 @@ main =
     run testProgDivSeries
     run testProgRegDivR1Noninit
     run testProgJeq
+    run testProgDivImm
