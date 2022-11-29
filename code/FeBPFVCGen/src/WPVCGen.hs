@@ -12,8 +12,10 @@ import Definitions
 ppE :: Expression -> String
 ppE (EVar s) = s
 ppE (EImm imm) = show imm
--- ppE (EReg reg) = show reg
+ppE (EAdd e1 e2) = ppE e1 ++ " + " ++ ppE e2
+ppE (EMul e1 e2) = ppE e1 ++ " * " ++ ppE e2
 ppE (EDiv rd src) = ppE rd ++ " / " ++ ppE src
+ppE (EXor e1 e2) = ppE e1 ++ " ^ " ++ ppE e2
 
 -- Pretty printing of expression predicates
 ppEP :: ExpressionPredicate -> String
@@ -47,7 +49,10 @@ with_smt_lib_wrapping s =
 ppE_smt :: Expression -> String
 ppE_smt (EVar s) = s
 ppE_smt (EImm imm) = toHex imm
+ppE_smt (EAdd e1 e2) = "(bvadd " ++ ppE_smt e1 ++ " " ++ ppE_smt e2 ++ ")"
+ppE_smt (EMul e1 e2) = "(bvmul " ++ ppE_smt e1 ++ " " ++ ppE_smt e2 ++ ")"
 ppE_smt (EDiv rd src) = "(bvudiv " ++ ppE_smt rd ++ " " ++ ppE_smt src ++ ")"
+ppE_smt (EXor e1 e2) = "(bvxor " ++ ppE_smt e1 ++ " " ++ ppE_smt e2 ++ ")"
 
 -- Pretty print expression predicate to smtlib2 format
 ppEP_smt :: ExpressionPredicate -> String
@@ -71,6 +76,11 @@ pp_smt predicate = ppP_smt 1 predicate
 -- Extract used variables from expression
 varsInExpression :: Expression -> [Expression]
 varsInExpression (EVar v) = [EVar v]
+varsInExpression (EAdd e1 e2) = varsInExpression e1 ++ varsInExpression e2
+varsInExpression (EMul e1 e2) = varsInExpression e1 ++ varsInExpression e2
+varsInExpression (EDiv e1 e2) = varsInExpression e1 ++ varsInExpression e2
+varsInExpression (EXor e1 e2) = varsInExpression e1 ++ varsInExpression e2
+
 varsInExpression _ = []
 -- Extract used variables from expression predicate
 varsInExpressionPredicate :: ExpressionPredicate -> [Expression]
@@ -97,7 +107,10 @@ freshVar predicate =
     head unused
 
 substitute_in_expression :: Expression -> Expression -> Expression -> Expression
+substitute_in_expression old new (EAdd rd src) = EAdd (substitute_in_expression old new rd) (substitute_in_expression old new src)
+substitute_in_expression old new (EMul rd src) = EMul (substitute_in_expression old new rd) (substitute_in_expression old new src)
 substitute_in_expression old new (EDiv rd src) = EDiv (substitute_in_expression old new rd) (substitute_in_expression old new src)
+substitute_in_expression old new (EXor rd src) = EXor (substitute_in_expression old new rd) (substitute_in_expression old new src)
 substitute_in_expression old new e =
   if old == e then new
   else e
@@ -186,16 +199,52 @@ toFWProg' (A.Binary A.B64 A.Mov rd (Right imm)) =
       imm' = EImm (fromIntegral imm)
   in Assign vname imm'
 
+
+-- Arithmetic
+toFWProg' (A.Binary A.B64 A.Add rd (Right imm)) =
+  let (EVar vname) = reg2var rd 
+      imm' = EImm (fromIntegral imm)
+  in Assign vname (EAdd (EVar vname) imm')
+
+toFWProg' (A.Binary A.B64 A.Add rd (Left rs)) =
+  let (EVar vname) = reg2var rd 
+      rs' = reg2var rs
+  in Assign vname (EAdd (EVar vname) rs')
+
+toFWProg' (A.Binary A.B64 A.Mul rd (Right imm)) =
+  let (EVar vname) = reg2var rd 
+      imm' = EImm (fromIntegral imm)
+  in Assign vname (EMul (EVar vname) imm')
+
+toFWProg' (A.Binary A.B64 A.Mul rd (Left rs)) =
+  let (EVar vname) = reg2var rd 
+      rs' = reg2var rs
+  in Assign vname (EMul (EVar vname) rs')
+
+toFWProg' (A.Binary A.B64 A.Xor rd (Right imm)) =
+  let (EVar vname) = reg2var rd 
+      imm' = EImm (fromIntegral imm)
+  in Assign vname (EXor (EVar vname) imm')
+
+toFWProg' (A.Binary A.B64 A.Xor rd (Left rs)) =
+  let (EVar vname) = reg2var rd 
+      rs' = reg2var rs
+  in Assign vname (EXor (EVar vname) rs')
+
+
 toFWProg' (A.Binary A.B64 A.Div rd (Right imm)) =
   let (EVar vname) = reg2var rd 
       imm' = EImm (fromIntegral imm)
-      in Assign vname (EDiv (EVar vname) imm')
+  in Assign vname (EDiv (EVar vname) imm')
 
 toFWProg' (A.Binary A.B64 A.Div rd (Left rs)) =
   let (EVar vname) = reg2var rd 
       rs' = reg2var rs
-      in Assign vname (EDiv (EVar vname) rs')
+  in Assign vname (EDiv (EVar vname) rs')
 
+
+
+-- Conditionals
 toFWProg' (A.JCond A.Jeq rd (Right imm) off) =
   let (EVar vname) = reg2var rd
       imm' = EImm $ fromIntegral imm
@@ -208,7 +257,6 @@ toFWProg' (A.JCond A.Jeq rd (Left rs) off) =
       ep = EPEq (EVar vname) rs'
       off' = fromIntegral off
   in Cond ep off'
-
 
 toFWProg' (A.JCond A.Jgt rd (Right imm) off) =
   let (EVar vname) = reg2var rd
@@ -235,6 +283,8 @@ toFWProg' (A.JCond A.Jne rd (Left rs) off) =
       ep = EPNeq (EVar vname) rs'
       off' = fromIntegral off
   in Cond ep off'
+
+
   
 toFWProg' _ = undefined
 

@@ -104,6 +104,26 @@ testProgJeq = [ Binary B64 Mov (Reg 0) (Right 10)
               , Binary B64 Div (Reg 0) (Left (Reg 2))
               , Exit ]
 
+testProgAddMulDiv :: A.Program
+testProgAddMulDiv =
+  [ Binary B64 Mov (Reg 0) (Right 10)
+  , Binary B64 Mov (Reg 1) (Right 0)
+  , Binary B64 Add (Reg 0) (Right 10)
+  , Binary B64 Add (Reg 1) (Left (Reg 0))
+  , Binary B64 Mul (Reg 1) (Left (Reg 0))  
+  , Binary B64 Div (Reg 0) (Left (Reg 1))
+  , Exit ]
+
+testProgXorDiv :: A.Program
+testProgXorDiv =
+  [ Binary B64 Mov (Reg 0) (Right 10)
+  , Binary B64 Mov (Reg 1) (Right 0)
+  , Binary B64 Xor (Reg 1) (Left (Reg 0))
+  , Binary B64 Div (Reg 0) (Left (Reg 1))
+  , Exit ]
+
+
+
 
 run :: Program -> IO ()
 run p =
@@ -127,3 +147,5 @@ main =
     run testProgRegDivR1Noninit
     run testProgJeq
     run testProgDivImm
+    run testProgAddMulDiv
+    run testProgXorDiv
