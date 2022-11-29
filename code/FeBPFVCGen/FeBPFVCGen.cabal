@@ -33,9 +33,8 @@ library
       base >=4.7 && <5
     , containers
     , ebpf-tools
-    , mtl
     , smtLib
-    , transformers
+    , vector
   default-language: Haskell2010
 
 executable FeBPFVCGen-exe
@@ -50,9 +49,8 @@ executable FeBPFVCGen-exe
     , base >=4.7 && <5
     , containers
     , ebpf-tools
-    , mtl
     , smtLib
-    , transformers
+    , vector
   default-language: Haskell2010
 
 test-suite FeBPFVCGen-test
@@ -68,9 +66,8 @@ test-suite FeBPFVCGen-test
     , base >=4.7 && <5
     , containers
     , ebpf-tools
-    , mtl
     , smtLib
     , tasty
     , tasty-hunit
-    , transformers
+    , vector
   default-language: Haskell2010
