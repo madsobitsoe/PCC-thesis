@@ -1,12 +1,12 @@
 module Definitions
   where
 
-import Control.Monad
-import Control.Monad.Trans.State.Lazy
-import Control.Monad.Trans.Reader
---import Control.Monad.Trans.Except
-import Control.Monad.Except
-import Control.Monad.Trans
+-- import Control.Monad
+-- import Control.Monad.Trans.State.Lazy
+-- import Control.Monad.Trans.Reader
+-- --import Control.Monad.Trans.Except
+-- import Control.Monad.Except
+-- import Control.Monad.Trans
 
 
 import Ebpf.Asm as A
@@ -54,3 +54,17 @@ data Predicate =
   | PITE ExpressionPredicate Predicate Predicate
   deriving (Eq, Show)
 
+-- Data.Vector 
+-- data Program = [Instr2] -- Brug Data.Vector 
+-- data Instr2 = --Seq Cmd Instr2
+--              SAssign Register Expression
+--            | Cond Prim RelOp Prim Index
+--            | Jmp Index 
+--            | Exit
+--   deriving (Eq, Show, Generic)
+
+
+-- data Instr = Seq Cmd Instr
+--            | Cond Prim RelOp Prim Instr Instr
+--            | Exit
+--   deriving (Eq, Show, Generic)

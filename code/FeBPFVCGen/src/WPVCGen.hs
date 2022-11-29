@@ -113,6 +113,7 @@ varsInExpressionPredicate :: ExpressionPredicate -> [Expression]
 varsInExpressionPredicate EPTrue = []
 varsInExpressionPredicate (EPEq e1 e2) = varsInExpression e1 ++ varsInExpression e2
 varsInExpressionPredicate (EPNeq e1 e2) = varsInExpression e1 ++ varsInExpression e2
+varsInExpressionPredicate (EPGTE e1 e2) = varsInExpression e1 ++ varsInExpression e2
 -- Extract used variables from predicate
 varsInPredicate :: Predicate -> [Expression]
 varsInPredicate (PNot predicate) = varsInPredicate predicate
@@ -139,9 +140,12 @@ substitute_in_expression old new e =
   else e
 
 substitute_in_expression_predicate :: Expression -> Expression ->  ExpressionPredicate -> ExpressionPredicate
-substitute_in_expression_predicate old new EPTrue = EPTrue
+substitute_in_expression_predicate _ _ EPTrue = EPTrue
 substitute_in_expression_predicate old new (EPEq e1 e2) = EPEq (substitute_in_expression old new e1) (substitute_in_expression old new e2)
 substitute_in_expression_predicate old new (EPNeq e1 e2) = EPNeq (substitute_in_expression old new e1) (substitute_in_expression old new e2)
+substitute_in_expression_predicate old new (EPGTE e1 e2) = EPGTE (substitute_in_expression old new e1) (substitute_in_expression old new e2)
+
+
 
 substitute_in_predicate :: Expression -> Expression -> Predicate -> Predicate
 substitute_in_predicate _ _ (PEP EPTrue) = PEP EPTrue
@@ -158,6 +162,10 @@ substitute_in_predicate old new (PEP (EPNeq e1 e2)) =
   let e1' = if e1 == old then new else (substitute_in_expression old new e1)
       e2' = if e2 == old then new else (substitute_in_expression old new e2)
   in (PEP (EPNeq e1' e2'))
+substitute_in_predicate old new (PEP (EPGTE e1 e2)) =
+  let e1' = if e1 == old then new else (substitute_in_expression old new e1)
+      e2' = if e2 == old then new else (substitute_in_expression old new e2)
+  in (PEP (EPGTE e1' e2'))
 
 substitute_in_predicate old new (PAll e p) =
   let p' = substitute_in_predicate old new p
@@ -209,3 +217,40 @@ wp prog = wp_prog prog (PEP EPTrue)
 -- Generate VC for a program and prepend the initial guarantees `Pre`
 withInitialPre :: A.Program -> Predicate
 withInitialPre prog = PAll (EVar "n") (PImplies (PEP (EPGTE (EVar "n") (EImm 1))) (substitute_in_predicate (EReg R2) (EVar "n") $ wp prog))
+
+
+-- From meeting
+-- wp_inst_2 :: Program -> Int -> Predicate -> Predicate
+-- wp_inst_2 p idx q = --(SAssign rd e2) q =
+--   case p !! idx of
+--     (SAssign rd e2) -> 
+--       let v = freshVar q
+--           ep = PEP (EPEq v e2)
+--           x = EReg rd
+--       in
+--         PAll v (PImplies ep (substitute_in_predicate x v (wp_inst_2 p (idx+1) q)))
+--     Jmp idx -> wp_inst_2 p idx q
+--     Cond ep idx' -> PITE ep (wp_inst_2 p idx' q) (wp_inst_2 p (idx+1) q)
+--     Exit -> PTrue
+    
+-- -- wp_inst (SSeq s1 s2) q =
+-- --   wp_inst s1 (wp_inst s2 q)
+
+-- -- wp_inst (SITE ep st se) q =
+-- --   let st' = wp_inst st q
+-- --       se' = wp_inst se q
+-- --   in PITE ep st' se'
+
+-- wp_inst :: Statement -> SymState -> Predicate -> (Predicate, SymState)
+-- wp_inst (SAssign rd e2) symState q  =
+--   let v = freshVar q
+--       ep = PEP (EPEq v e2)
+--       x = EReg rd
+--       symState' = v mapsto rd in symState
+--   in
+--     PAll v (PImplies ep q), symState' 
+
+-- wp_inst (SSeq s1 s2) symState q =
+--   let (q',symState') = wp_inst s1 symState q
+--   in wp_inst s2 symState' q'
+--   -- wp_inst s1 (wp_inst s2 q)
