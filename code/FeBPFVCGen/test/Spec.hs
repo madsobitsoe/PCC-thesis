@@ -116,7 +116,7 @@ wp_vcgen_tests = testGroup "WPVCGen tests" [
         progFW = toFWProg progA
         initial = PEP EPTrue
     in
-      wp_inst2 progFW 0 initial @?= initial
+      wp_inst progFW 0 initial @?= initial
 
   ]
 
