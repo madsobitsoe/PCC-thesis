@@ -122,6 +122,15 @@ testProgXorDiv =
   , Binary B64 Div (Reg 0) (Left (Reg 1))
   , Exit ]
 
+testProgXorInitDiv :: A.Program
+testProgXorInitDiv =
+  [ Binary B64 Mov (Reg 0) (Right 42)
+  , Binary B64 Mov (Reg 1) (Left (Reg 2))
+  , Binary B64 Xor (Reg 1) (Left (Reg 2))
+  , Binary B64 Add (Reg 1) (Right 1)
+  , Binary B64 Div (Reg 0) (Left (Reg 1))
+  , Exit ]
+
 
 
 
@@ -149,3 +158,4 @@ main =
     run testProgDivImm
     run testProgAddMulDiv
     run testProgXorDiv
+    run testProgXorInitDiv
