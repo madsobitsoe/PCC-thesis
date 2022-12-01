@@ -51,10 +51,13 @@ Expressions of FWeBPF are defined by the grammar
   \begin{tabular}{lclr}
     $e$ & $::=$ & $X$ & (A variable) \\
       & $|$ & $N$ & (An immediate value $\in 0..2^{32}-1$ ) \\
-      & $|$ & $R$ & (A register) \\
+      % & $|$ & $R$ & (A register) \\
       % & $|$ & $e_1 = e_2$ & (Equality of two expressions) \\
       % & $|$ & $e_1 != e_2$ & (Inequality of two expressions) \\
-      & $|$ & $e_1 \oslash e_2$ & (Unsigned division of two expressions with 64-bit wrapping) \\    
+      & $|$ & $e_1 \oplus e_2$ & (Unsigned addition of two expressions with 64-bit wrapping) \\    
+      & $|$ & $e_1 \otimes e_2$ & (Unsigned multiplication of two expressions with 64-bit wrapping) \\    
+      & $|$ & $e_1 \oslash e_2$ & (Unsigned division of two expressions with 64-bit wrapping) \\
+      & $|$ & $e_1 ~ \mathrm{xor} ~ e_2$ & (bitwise \texttt{xor} of two expressions with 64-bit wrapping) \\        
 \end{tabular}    
 \end{figure}
 
@@ -70,17 +73,30 @@ Expression Predicates of FWeBPF are defined by the grammar
 \end{figure}
 
 
-Statements of FWeBPF are defined by the grammar
+Instructions of FWeBPF are defined by the grammar
 \begin{figure}[H]
   \centering
   \begin{tabular}{lclr}
-    $s$ & $::=$ & \texttt{exit} & (Exits the program with \texttt{r0} as return value) \\
+    $i$ & $::=$ & \texttt{exit} & (Exits the program with \texttt{r0} as return value) \\
         & $|$   & $x := e$      & (assignment) \\
-        & $|$   & $s_1 ; s_2$   & (sequence) \\
-        & $|$   & $\mathrm{if} ~ ep ~ \mathrm{then} ~ s_1 ~ \mathrm{else} ~ s_2$ & (conditional) \\
+        % & $|$   & $s_1 ; s_2$   & (sequence) \\
+        & $|$   & $\mathrm{if} ~ ep ~ \mathrm{then} ~ idx$ & (conditional) \\ %s_1 ~ \mathrm{else} ~ s_2$ & (conditional) \\
 \end{tabular}    
 \end{figure}
 
+% Statements of FWeBPF are defined by the grammar
+% \begin{figure}[H]
+%   \centering
+%   \begin{tabular}{lclr}
+%     $s$ & $::=$ & \texttt{exit} & (Exits the program with \texttt{r0} as return value) \\
+%         & $|$   & $x := e$      & (assignment) \\
+%         & $|$   & $s_1 ; s_2$   & (sequence) \\
+%         & $|$   & $\mathrm{if} ~ ep ~ \mathrm{then} ~ s_1 ~ \mathrm{else} ~ s_2$ & (conditional) \\
+% \end{tabular}    
+% \end{figure}
+
+
+A program is a 0-indexed vector of instructions $\mathcal{P}$, st. the index corresponds to the line number of the instruction $n$ minus 1, i.e. $\mathcal{P}_0$ corresponds to the first instruction of the program, $\mathcal{P}_1$ to the second and so on.
 
 \subsubsection{Translating eBPF to FWeBPF}
 
@@ -88,10 +104,26 @@ Statements of FWeBPF are defined by the grammar
   \centering
   \begin{tabular}{rcl}
     \textbf{eBPF assembly} & & \textbf{FWeBPF} \\
-    T(\texttt{exit} : $prog)$ & $=$ & \texttt{exit} \\
-    T($\mathrm{mov} ~ r_d, src : prog$ ) & $=$ & $r_d := src ; T(prog)$ \\
-    T($\mathrm{div} ~ r_d, r_s : prog$) & $=$ & $r_d := r_d \oslash r_s ; T(prog)$ \\
-    T($\mathrm{jeq ~ r_d, r_s, +off} : prog$) & $=$ & $\mathrm{if} ~ (r_d = r_s) ~ \mathrm{then} ~ T(prog[\mathrm{off}..]) ~ \mathrm{else} ~ T(prog)$ \\
-\end{tabular}    
+    \texttt{exit} & $=$ & \texttt{exit} \\
+    $\mathrm{mov} ~ r_d, src$ & $=$ & $r_d := src$ \\
+    $\mathrm{add} ~ r_d, src$ & $=$ & $r_d := r_d \oplus src$ \\
+    $\mathrm{mul} ~ r_d, src$ & $=$ & $r_d := r_d \otimes src$ \\        
+    $\mathrm{div} ~ r_d, src$ & $=$ & $r_d := r_d \oslash src$ \\
+    $\mathrm{xor} ~ r_d, src$ & $=$ & $r_d := r_d ~ \mathrm{xor} ~ src$ \\            
+    $\mathrm{jeq ~ r_d, src, +off}$ & $=$ & $\mathrm{if} ~ (r_d = src) ~ \mathrm{then} ~ \mathrm{off}$ \\
+    $\mathrm{jneq ~ r_d, src, +off}$ & $=$ & $\mathrm{if} ~ (r_d \neq src) ~ \mathrm{then} ~ \mathrm{off}$ \\
+    $\mathrm{jge ~ r_d, src, +off}$ & $=$ & $\mathrm{if} ~ (r_d \geq src) ~ \mathrm{then} ~ \mathrm{off}$    \\    
+\end{tabular}
 \end{figure}
+
+% \begin{figure}[H]
+%   \centering
+%   \begin{tabular}{rcl}
+%     \textbf{eBPF assembly} & & \textbf{FWeBPF} \\
+%     T(\texttt{exit} : $prog)$ & $=$ & \texttt{exit} \\
+%     T($\mathrm{mov} ~ r_d, src : prog$ ) & $=$ & $r_d := src ; T(prog)$ \\
+%     T($\mathrm{div} ~ r_d, r_s : prog$) & $=$ & $r_d := r_d \oslash r_s ; T(prog)$ \\
+%     T($\mathrm{jeq ~ r_d, r_s, +off} : prog$) & $=$ & $\mathrm{if} ~ (r_d = r_s) ~ \mathrm{then} ~ T(prog[\mathrm{off}..]) ~ \mathrm{else} ~ T(prog)$ \\
+% \end{tabular}    
+% \end{figure}
 
