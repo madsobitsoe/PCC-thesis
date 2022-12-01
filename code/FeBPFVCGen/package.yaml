@@ -25,6 +25,8 @@ dependencies:
 - containers
 - smtLib
 - vector
+- optparse-applicative
+- pretty-simple
 ghc-options:
 - -Wall
 - -Wcompat

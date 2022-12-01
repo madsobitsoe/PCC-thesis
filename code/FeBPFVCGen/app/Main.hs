@@ -1,8 +1,52 @@
 module Main (main) where
 
 import Ebpf.Asm as A
--- import qualified SMTLib2 as S
+import Ebpf.AsmParser
+import qualified Ebpf.Encode as E
+
 import WPVCGen
+
+import Options.Applicative
+import Text.Pretty.Simple (pPrint)
+import Text.Printf (printf)
+import Data.List (intersperse)
+import qualified System.Exit as SE
+
+data Tool = VCGen
+          | Default
+  deriving Show
+          
+data Options = Options { tool :: Tool
+                       , outfile :: Maybe FilePath
+                       , file :: Maybe FilePath
+                       } deriving Show
+
+options :: ParserInfo Options
+options = info (opts <**> helper)
+          (fullDesc
+           <> progDesc "Verification Condition Generator for (FeatherWeight)-eBPF bytecode")
+  where
+    opts = Options
+      <$> tool
+      <*> output
+      <*> infile --argument str (metavar "INFILE")
+    tool = flag' VCGen (long "vcgen"
+                        <> short 'g'
+                        <> help "parse asm file, generate VC and write to output")
+           <|>
+           flag' Default (long "default"
+                         <> short 'd'
+                         <> help "generate VC for the default programs" )
+    infile = optional $ strOption (long "input"
+                                   <> short 'i'
+                                   <> metavar "INFILE"
+                                   <> help "The input assembly file to read" )
+    output = optional $ strOption (long "output"
+                                   <> short 'o'
+                                   <> metavar "OUTFILE"
+                                   <> help "Write output to OUTFILE (writes to stdout if not given)" )
+             
+              
 
 testProg :: A.Program
 testProg = [ Binary B64 Mov (Reg 0) (Left (Reg 2))
@@ -147,15 +191,27 @@ run p =
 main :: IO ()
 main =
   do
-    run testProgRegDiv
-    run testProgOnlyExit
-    run testProgTwoMov
-    run testProgOverWriteMovMultiple
-    run testProgOverWriteMovAfterDiv
-    run testProgDivSeries
-    run testProgRegDivR1Noninit
-    run testProgJeq
-    run testProgDivImm
-    run testProgAddMulDiv
-    run testProgXorDiv
-    run testProgXorInitDiv
+    Options tool outfile file <- execParser options
+    case tool of
+      VCGen -> do
+        case file of
+          Nothing -> error "No inputfile to parse"
+          Just infile -> do
+            res <- parseFromFile infile
+            case res of
+              Left err -> print err
+              Right prog -> run prog
+      Default -> do
+        run testProgRegDiv
+        run testProgOnlyExit
+        run testProgTwoMov
+        run testProgOverWriteMovMultiple
+        run testProgOverWriteMovAfterDiv
+        run testProgDivSeries
+        run testProgRegDivR1Noninit
+        run testProgJeq
+        run testProgDivImm
+        run testProgAddMulDiv
+        run testProgXorDiv
+        run testProgXorInitDiv
+      _ -> error "Not implemented yet"
