@@ -27,6 +27,7 @@ dependencies:
 - vector
 - optparse-applicative
 - pretty-simple
+- process
 ghc-options:
 - -Wall
 - -Wcompat

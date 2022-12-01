@@ -21,6 +21,7 @@ library
   exposed-modules:
       AbstractMachine
       Definitions
+      ExamplePrograms
       Util
       VCGen
       WPVCGen
@@ -35,6 +36,7 @@ library
     , ebpf-tools
     , optparse-applicative
     , pretty-simple
+    , process
     , smtLib
     , vector
   default-language: Haskell2010
@@ -53,6 +55,7 @@ executable FeBPFVCGen-exe
     , ebpf-tools
     , optparse-applicative
     , pretty-simple
+    , process
     , smtLib
     , vector
   default-language: Haskell2010
@@ -72,6 +75,7 @@ test-suite FeBPFVCGen-test
     , ebpf-tools
     , optparse-applicative
     , pretty-simple
+    , process
     , smtLib
     , tasty
     , tasty-hunit
