@@ -8,7 +8,7 @@ import Text.Printf
 -- Helper function to convert between ebpf-tools registers and VCGen Variables
 reg2var :: A.Reg -> Primitive
 reg2var (A.Reg 0) = PVar "r0"
-reg2var (A.Reg 1) = PVar "r1"
+reg2var (A.Reg 1) = PVar "m"
 reg2var (A.Reg 2) = PVar "n"
 reg2var (A.Reg 3) = PVar "r3"
 reg2var (A.Reg 4) = PVar "r4"

@@ -5,6 +5,7 @@ where
 import qualified Ebpf.Asm as A
 import Data.Word
 import qualified Data.Vector as V
+import qualified Data.Map.Strict as M
 import Util
 import Definitions
 
@@ -317,4 +318,75 @@ toFWProg' (A.JCond A.Jne rd (Left rs) off) =
 toFWProg' _ = undefined
 
 
+getType :: Primitive -> FWTypeEnv -> Either String FWType
+getType prim env =
+  case prim of
+    PImm _ -> Right Int64
+    PVar x -> case M.lookup x env of
+      Nothing -> Left $ show prim ++ " was not in type environment"
+      Just t -> Right t
+
+getExpType :: Expression -> FWTypeEnv -> Either String FWType
+getExpType e env =
+  case e of
+    EPrim prim -> getType prim env
+    EAdd p1 p2 -> doIt p1 p2
+    EMul p1 p2 -> doIt p1 p2
+    EDiv p1 p2 -> doIt p1 p2
+    EXor p1 p2 -> doIt p1 p2
+  where
+    doIt p1 p2 =
+      case getType p1 env of
+        Left err -> Left err
+        Right t1 ->
+          case getType p2 env of
+            Left err -> Left err
+            Right t2 ->
+              if t1 == Int64 && t1 == t2 then Right t1
+              else
+                Left $ "types " ++ show t1 ++ " and " ++ show t2 ++ " do not match or are not allowed in arithmetic"
+
+
+getExpPredType :: ExpressionPredicate -> FWTypeEnv -> Either String FWType
+getExpPredType ep env =
+  case ep of
+    EPTrue -> Left "No boolean type in FWeBPF, impossible to check EPTrue"
+    EPEq p e -> doIt p e
+    EPNeq p e -> doIt p e
+    EPGTE p e -> doIt p e
+  where
+    doIt p e =
+      case getType p env of
+        Left err -> Left err
+        Right t1 ->
+          case getExpType e env of
+            Left err -> Left err
+            Right t2 ->
+              if t1 == Int64 && t1 == t2 then Right t1
+              else Left $ "types " ++ show t1 ++ " and " ++ show t2 ++ " do not match or are not allowed in comparisons"
+              
+
+typeCheck :: FWProgram -> Either String FWProgram
+typeCheck prog = typeCheck' prog initialTypeEnvironment 0
+
+
+typeCheck' :: FWProgram -> FWTypeEnv -> Index -> Either String FWProgram
+typeCheck' prog env idx =
+  case prog V.! idx of
+    Exit -> Right prog
+    Assign x e ->    
+      case getExpType e env of
+        Left err -> Left err
+        Right t ->
+          let env' = M.insert x t env
+          in typeCheck' prog env' (idx+1)
+    Cond ep offset ->
+      case getExpPredType ep env of
+        Left err -> Left err
+        Right _ ->
+            case typeCheck' prog env (idx+1+offset) of
+              Left err -> Left err
+              Right _ -> typeCheck' prog env (idx+1)
+    _ -> Left "not implemented yet"
+    
 

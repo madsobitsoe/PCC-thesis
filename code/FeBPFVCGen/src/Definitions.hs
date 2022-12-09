@@ -6,6 +6,7 @@ import Ebpf.Asm as A
 import Data.Maybe
 import Data.Word
 import Data.Vector as V
+import Data.Map.Strict as M 
 
 type VName = String
 
@@ -16,8 +17,6 @@ data Primitive =
 
 data Expression =
     EPrim Primitive
-  --   EVar VName
-  -- | EImm Word32
   | EAdd Primitive Primitive
   | EMul Primitive Primitive
   | EDiv Primitive Primitive
@@ -51,3 +50,21 @@ data Instr =
   | Exit
   deriving (Eq, Show)
 
+data FWType = Int64 | Mem Primitive | Unknown
+  deriving (Eq, Show)
+type FWTypeEnv = M.Map VName FWType
+
+initialTypeEnvironment :: FWTypeEnv
+initialTypeEnvironment =
+  M.fromList [("r0", Unknown)
+             ,("r1", Mem (PVar "r2"))
+             ,("r2", Int64)
+             ,("r3", Unknown)
+             ,("r4", Unknown)
+             ,("r5", Unknown)
+             ,("r6", Unknown)
+             ,("r7", Unknown)
+             ,("r8", Unknown)
+             ,("r9", Unknown)
+             ,("r10", Mem (PImm $ fromIntegral 512))
+             ]
