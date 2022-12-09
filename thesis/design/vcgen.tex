@@ -8,13 +8,14 @@ The rules for WP computation are defined by
   \mathrm{WP}(\mathcal{P}, idx, Q) =
   \begin{cases}
     \mathrm{true}, & \mathcal{P}_{idx} = \mathrm{exit} \\
-    \forall v . v = e_1 \oplus e_2 \implies \mathrm{WP}(\mathcal{P}, idx+1, Q)[x \leftarrow v])) , & \mathcal{P}_{idx} = x := e_1 \oplus e_2 \\
-    \forall v . v = e_1 \otimes e_2 \implies \mathrm{WP}(\mathcal{P}, idx+1, Q)[x \leftarrow v])) , & \mathcal{P}_{idx} = x := e_1 \otimes e_2 \\    
-    \forall v . (e_2  \neq 0 \land (v = e_1 \oslash e_2 \implies \mathrm{WP}(\mathcal{P}, idx+1, Q)[x \leftarrow v])) , & \mathcal{P}_{idx} = x := e_1 \oslash e_2 \\
-    \forall v . v = e_1 ~ \mathrm{xor} ~ e_2 \implies \mathrm{WP}(\mathcal{P}, idx+1, Q)[x \leftarrow v])) , & \mathcal{P}_{idx} = x := e_1 ~ \mathrm{xor} ~ e_2 \\
-    \mathrm{if} ~ e_1 = e_2 ~ \mathrm{then} ~ WP(\mathcal{P}, idx+1+off, Q) ~ \mathrm{else} ~ WP(\mathcal{P},idx+1, Q) , & \mathcal{P}_{idx} = \mathrm{if} ~ e_1 = e_2 ~ \mathrm{then} ~ \mathrm{off} \\
-    \mathrm{if} ~ e_1 \neq e_2 ~ \mathrm{then} ~ WP(\mathcal{P}, idx+1+off, Q) ~ \mathrm{else} ~ WP(\mathcal{P},idx+1, Q) , & \mathcal{P}_{idx} = \mathrm{if} ~ e_1 \neq e_2 ~ \mathrm{then} ~ \mathrm{off} \\    
-    \mathrm{if} ~ e_1 \geq e_2 ~ \mathrm{then} ~ WP(\mathcal{P}, idx+1+off, Q) ~ \mathrm{else} ~ WP(\mathcal{P},idx+1, Q) , & \mathcal{P}_{idx} = \mathrm{if} ~ e_1 \geq e_2 ~ \mathrm{then} ~ \mathrm{off} \\    \end{cases}
+    \forall v . v = p \implies \mathrm{WP}(\mathcal{P}, idx+1, Q)[x \leftarrow v])) , & \mathcal{P}_{idx} = x := p \\    
+    \forall v . v = p_1 \oplus p_2 \implies \mathrm{WP}(\mathcal{P}, idx+1, Q)[x \leftarrow v])) , & \mathcal{P}_{idx} = x := p_1 \oplus p_2 \\
+    \forall v . v = p_1 \otimes p_2 \implies \mathrm{WP}(\mathcal{P}, idx+1, Q)[x \leftarrow v])) , & \mathcal{P}_{idx} = x := p_1 \otimes p_2 \\    
+    \forall v . (p_2  \neq 0 \land (v = p_1 \oslash p_2 \implies \mathrm{WP}(\mathcal{P}, idx+1, Q)[x \leftarrow v])) , & \mathcal{P}_{idx} = x := p_1 \oslash p_2 \\
+    \forall v . v = p_1 ~ \mathrm{xor} ~ p_2 \implies \mathrm{WP}(\mathcal{P}, idx+1, Q)[x \leftarrow v])) , & \mathcal{P}_{idx} = x := p_1 ~ \mathrm{xor} ~ p_2 \\
+    \mathrm{if} ~ p = e ~ \mathrm{then} ~ WP(\mathcal{P}, idx+1+off, Q) ~ \mathrm{else} ~ WP(\mathcal{P},idx+1, Q) , & \mathcal{P}_{idx} = \mathrm{if} ~ p = e ~ \mathrm{then} ~ \mathrm{off} \\
+    \mathrm{if} ~ p \neq e ~ \mathrm{then} ~ WP(\mathcal{P}, idx+1+off, Q) ~ \mathrm{else} ~ WP(\mathcal{P},idx+1, Q) , & \mathcal{P}_{idx} = \mathrm{if} ~ p \neq e ~ \mathrm{then} ~ \mathrm{off} \\    
+    \mathrm{if} ~ p \geq e ~ \mathrm{then} ~ WP(\mathcal{P}, idx+1+off, Q) ~ \mathrm{else} ~ WP(\mathcal{P},idx+1, Q) , & \mathcal{P}_{idx} = \mathrm{if} ~ p \geq e ~ \mathrm{then} ~ \mathrm{off} \\    \end{cases}
 \]
 
 

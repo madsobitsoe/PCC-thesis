@@ -27,37 +27,31 @@ At the beginning of execution of all programs, assume that
 At the end of all programs, \texttt{r0} will contain the return value. 
 This means \texttt{r0} should be initialized before an exit-instruction is reached.
 
-Ensuring registers are initialized before they are read is a security policy, not a safety policy.
-Therefore it is not a part of the verification conditions I will generate. Instead the derivation rules will ensure a register read is valid, so programs violating this will not be ``well formed'' and will not produce a verification condition. 
-
-% \subsubsection*{Instruction set}
-
-% \begin{tabular}{|l|l|} \hline
-%   \textbf{Assembly mnemonic} & \textbf{eBPF equivalent}  \\ \hline
-%   $\mathrm{mov} ~ r_d, r_s$  & $\mathrm{mov64} ~ r_d, r_s$\\ \hline
-%   $\mathrm{mov} ~ r_d, IMM$  &   $\mathrm{mov64} ~ r_d, IMM$\\ \hline  
-%   $\mathrm{div} ~ r_d, r_s$  & $\mathrm{div64} ~ r_d, r_s $\\ \hline
-%   $\mathrm{exit}$ &  \texttt{exit} \\ \hline  
-    %   \end{tabular}
-
-
+% Ensuring registers are initialized before they are read is a security policy, not a safety policy.
+% Therefore it is not a part of the verification conditions I will generate. Instead the derivation rules will ensure a register read is valid, so programs violating this will not be ``well formed'' and will not produce a verification condition. 
 
 \subsubsection{Defining FWeBPF}
+
+
+Primitives of FWeBPF are defined by the grammar
+\begin{figure}[H]
+  \centering
+  \begin{tabular}{lclr}
+    $p$ & $::=$ & $X$ & (A variable) \\
+        & $|$ & $N$ & (An immediate value $\in 0..2^{32}-1$ ) \\
+\end{tabular}    
+\end{figure}
 
 
 Expressions of FWeBPF are defined by the grammar
 \begin{figure}[H]
   \centering
   \begin{tabular}{lclr}
-    $e$ & $::=$ & $X$ & (A variable) \\
-      & $|$ & $N$ & (An immediate value $\in 0..2^{32}-1$ ) \\
-      % & $|$ & $R$ & (A register) \\
-      % & $|$ & $e_1 = e_2$ & (Equality of two expressions) \\
-      % & $|$ & $e_1 != e_2$ & (Inequality of two expressions) \\
-      & $|$ & $e_1 \oplus e_2$ & (Unsigned addition of two expressions with 64-bit wrapping) \\    
-      & $|$ & $e_1 \otimes e_2$ & (Unsigned multiplication of two expressions with 64-bit wrapping) \\    
-      & $|$ & $e_1 \oslash e_2$ & (Unsigned division of two expressions with 64-bit wrapping) \\
-      & $|$ & $e_1 ~ \mathrm{xor} ~ e_2$ & (bitwise \texttt{xor} of two expressions with 64-bit wrapping) \\        
+    $e$ & $::=$ & $p$ & (A primitive) \\
+      & $|$ & $p_1 \oplus  p_2$ & (Unsigned addition of two primitives with 64-bit wrapping) \\    
+      & $|$ & $p_1 \otimes p_2$ & (Unsigned multiplication of two primitives with 64-bit wrapping) \\    
+      & $|$ & $p_1 \oslash p_2$ & (Unsigned division of two primitives with 64-bit wrapping) \\
+      & $|$ & $p_1 ~ \mathrm{xor} ~ p_2$ & (bitwise \texttt{xor} of two primitives with 64-bit wrapping) \\        
 \end{tabular}    
 \end{figure}
 
@@ -66,9 +60,9 @@ Expression Predicates of FWeBPF are defined by the grammar
   \centering
   \begin{tabular}{lclr}
     $ep$ & $::=$ & \texttt{true} & \\
-     & $|$ & $e_1 = e_2$ & (Equality of two expressions) \\    
-     & $|$ & $e_1 \neq e_2$ & (Inequality of two expressions) \\
-     & $|$ &  $e_1 \geq e_2$ & (Greater than or equal of two expressions) \\
+     & $|$ & $p = e$ & (Equality of a primitive and an expression) \\    
+     & $|$ & $p \neq e$ & (Inequality of a primitive and an expression) \\
+     & $|$ &  $p \geq e$ & (Greater than or equal of a primitive and an expression) \\
 \end{tabular}    
 \end{figure}
 

@@ -26,9 +26,9 @@ data Expression =
 
 data ExpressionPredicate =
     EPTrue
-  | EPEq  Expression Expression
-  | EPNeq Expression Expression
-  | EPGTE Expression Expression
+  | EPEq  Primitive Expression
+  | EPNeq Primitive Expression
+  | EPGTE Primitive Expression
   deriving (Eq, Show)
 
 data Predicate =
