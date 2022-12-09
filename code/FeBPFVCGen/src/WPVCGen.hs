@@ -8,14 +8,20 @@ import qualified Data.Vector as V
 import Util
 import Definitions
 
+-- Pretty printing of primitives
+ppPrim :: Primitive -> String
+ppPrim (PVar s) = s
+ppPrim (PImm imm) = show imm
+
 -- Pretty printing of expressions
 ppE :: Expression -> String
-ppE (EVar s) = s
-ppE (EImm imm) = show imm
-ppE (EAdd e1 e2) = ppE e1 ++ " + " ++ ppE e2
-ppE (EMul e1 e2) = ppE e1 ++ " * " ++ ppE e2
-ppE (EDiv rd src) = ppE rd ++ " / " ++ ppE src
-ppE (EXor e1 e2) = ppE e1 ++ " ^ " ++ ppE e2
+ppE (EPrim prim) = ppPrim prim
+-- ppE (EVar s) = s
+-- ppE (EImm imm) = show imm
+ppE (EAdd p1 p2) = ppPrim p1 ++ " + " ++ ppPrim p2
+ppE (EMul p1 p2) = ppPrim p1 ++ " * " ++ ppPrim p2
+ppE (EDiv p1 p2) = ppPrim p1 ++ " / " ++ ppPrim p2
+ppE (EXor p1 p2) = ppPrim p1 ++ " ^ " ++ ppPrim p2
 
 -- Pretty printing of expression predicates
 ppEP :: ExpressionPredicate -> String
@@ -45,14 +51,20 @@ with_smt_lib_wrapping s =
   "\n))\n(check-sat)\n(exit)\n"
 
 
+
+-- Pretty print primitive in smtlib2 format
+ppPrim_smt :: Primitive -> String
+ppPrim_smt (PImm imm) = toHex imm
+ppPrim_smt (PVar s) = s
 -- Pretty print expression to smtlib2 format
 ppE_smt :: Expression -> String
-ppE_smt (EVar s) = s
-ppE_smt (EImm imm) = toHex imm
-ppE_smt (EAdd e1 e2) = "(bvadd " ++ ppE_smt e1 ++ " " ++ ppE_smt e2 ++ ")"
-ppE_smt (EMul e1 e2) = "(bvmul " ++ ppE_smt e1 ++ " " ++ ppE_smt e2 ++ ")"
-ppE_smt (EDiv rd src) = "(bvudiv " ++ ppE_smt rd ++ " " ++ ppE_smt src ++ ")"
-ppE_smt (EXor e1 e2) = "(bvxor " ++ ppE_smt e1 ++ " " ++ ppE_smt e2 ++ ")"
+ppE_smt (EPrim prim) = ppPrim_smt prim
+-- ppE_smt (EVar s) = s
+-- ppE_smt (EImm imm) = toHex imm
+ppE_smt (EAdd p1 p2) = "(bvadd "  ++ ppPrim_smt p1 ++ " " ++ ppPrim_smt p2 ++ ")"
+ppE_smt (EMul p1 p2) = "(bvmul "  ++ ppPrim_smt p1 ++ " " ++ ppPrim_smt p2 ++ ")"
+ppE_smt (EDiv p1 p2) = "(bvudiv " ++ ppPrim_smt p1 ++ " " ++ ppPrim_smt p2 ++ ")"
+ppE_smt (EXor p1 p2) = "(bvxor "  ++ ppPrim_smt p1 ++ " " ++ ppPrim_smt p2 ++ ")"
 
 -- Pretty print expression predicate to smtlib2 format
 ppEP_smt :: ExpressionPredicate -> String
@@ -73,49 +85,63 @@ ppP_smt d (PITE ep p1 p2) = ppIndent d ++ "(ite " ++ ppEP_smt ep ++ "\n" ++ ppP_
 pp_smt :: Predicate -> String
 pp_smt predicate = ppP_smt 1 predicate
 
+
+
+varsInPrimitive :: Primitive -> [VName]
+varsInPrimitive (PImm imm) = []
+varsInPrimitive (PVar v) = [v]
 -- Extract used variables from expression
-varsInExpression :: Expression -> [Expression]
-varsInExpression (EVar v) = [EVar v]
-varsInExpression (EAdd e1 e2) = varsInExpression e1 ++ varsInExpression e2
-varsInExpression (EMul e1 e2) = varsInExpression e1 ++ varsInExpression e2
-varsInExpression (EDiv e1 e2) = varsInExpression e1 ++ varsInExpression e2
-varsInExpression (EXor e1 e2) = varsInExpression e1 ++ varsInExpression e2
+varsInExpression :: Expression -> [VName]
+varsInExpression (EPrim prim) = varsInPrimitive prim
+-- varsInExpression (EVar v) = [EVar v]
+varsInExpression (EAdd p1 p2) = varsInPrimitive p1 ++ varsInPrimitive p2
+varsInExpression (EMul p1 p2) = varsInPrimitive p1 ++ varsInPrimitive p2
+varsInExpression (EDiv p1 p2) = varsInPrimitive p1 ++ varsInPrimitive p2
+varsInExpression (EXor p1 p2) = varsInPrimitive p1 ++ varsInPrimitive p2
 
 varsInExpression _ = []
 -- Extract used variables from expression predicate
-varsInExpressionPredicate :: ExpressionPredicate -> [Expression]
+varsInExpressionPredicate :: ExpressionPredicate -> [VName]
 varsInExpressionPredicate EPTrue = []
 varsInExpressionPredicate (EPEq e1 e2) = varsInExpression e1 ++ varsInExpression e2
 varsInExpressionPredicate (EPNeq e1 e2) = varsInExpression e1 ++ varsInExpression e2
 varsInExpressionPredicate (EPGTE e1 e2) = varsInExpression e1 ++ varsInExpression e2
 -- Extract used variables from predicate
-varsInPredicate :: Predicate -> [Expression]
+varsInPredicate :: Predicate -> [VName]
 varsInPredicate (PNot predicate) = varsInPredicate predicate
-varsInPredicate (PAll v p) = varsInExpression (EVar v)  ++ varsInPredicate p
+varsInPredicate (PAll v p) = v : varsInPredicate p
 varsInPredicate (PAnd p1 p2) = varsInPredicate p1 ++ varsInPredicate p2
 varsInPredicate (PImplies p1 p2) = varsInPredicate p1 ++ varsInPredicate p2
 varsInPredicate (PEP ep) = varsInExpressionPredicate ep
 varsInPredicate (PITE ep p1 p2) = varsInExpressionPredicate ep ++ varsInPredicate p1 ++ varsInPredicate p2
 
 -- Given a predicate, return a fresh variable not used in the predicate
-freshVar :: Predicate -> Expression
+freshVar :: Predicate -> VName
 freshVar predicate =
   let used = varsInPredicate predicate
-      allFresh = map (\n -> EVar $ "v" ++ show n) [0..]
+      allFresh = map (\n -> "v" ++ show n) [0..]
       unused = filter (\v -> not $ elem v used) allFresh
   in
     head unused
 
-substitute_in_expression :: Expression -> Expression -> Expression -> Expression
-substitute_in_expression old new (EAdd rd src) = EAdd (substitute_in_expression old new rd) (substitute_in_expression old new src)
-substitute_in_expression old new (EMul rd src) = EMul (substitute_in_expression old new rd) (substitute_in_expression old new src)
-substitute_in_expression old new (EDiv rd src) = EDiv (substitute_in_expression old new rd) (substitute_in_expression old new src)
-substitute_in_expression old new (EXor rd src) = EXor (substitute_in_expression old new rd) (substitute_in_expression old new src)
-substitute_in_expression old new e =
-  if old == e then new
-  else e
 
-substitute_in_expression_predicate :: Expression -> Expression ->  ExpressionPredicate -> ExpressionPredicate
+substitute_in_primitive :: Primitive -> Primitive -> Primitive -> Primitive
+substitute_in_primitive _ _ (PImm imm) = (PImm imm)
+substitute_in_primitive old new (PVar vname) =
+  if old == (PVar vname) then new else (PVar vname)
+  
+substitute_in_expression :: Primitive -> Primitive -> Expression -> Expression
+substitute_in_expression old new (EPrim (PVar prim)) = EPrim $ substitute_in_primitive old new (PVar prim)
+substitute_in_expression old new (EAdd p1 p2) = EAdd (substitute_in_primitive old new p1) (substitute_in_primitive old new p2)
+substitute_in_expression old new (EMul p1 p2) = EMul (substitute_in_primitive old new p1) (substitute_in_primitive old new p2)
+substitute_in_expression old new (EDiv p1 p2) = EDiv (substitute_in_primitive old new p1) (substitute_in_primitive old new p2)
+substitute_in_expression old new (EXor p1 p2) = EXor (substitute_in_primitive old new p1) (substitute_in_primitive old new p2)
+substitute_in_expression _ _ e = e
+-- substitute_in_expression old new e =
+--   if old == e then new
+--   else e
+
+substitute_in_expression_predicate :: Primitive -> Primitive ->  ExpressionPredicate -> ExpressionPredicate
 substitute_in_expression_predicate _ _ EPTrue = EPTrue
 substitute_in_expression_predicate old new (EPEq e1 e2) = EPEq (substitute_in_expression old new e1) (substitute_in_expression old new e2)
 substitute_in_expression_predicate old new (EPNeq e1 e2) = EPNeq (substitute_in_expression old new e1) (substitute_in_expression old new e2)
@@ -123,24 +149,25 @@ substitute_in_expression_predicate old new (EPGTE e1 e2) = EPGTE (substitute_in_
 
 
 
-substitute_in_predicate :: Expression -> Expression -> Predicate -> Predicate
+substitute_in_predicate :: Primitive -> Primitive -> Predicate -> Predicate
 substitute_in_predicate _ _ (PEP EPTrue) = PEP EPTrue
 substitute_in_predicate old new (PAnd p1 p2) = PAnd (substitute_in_predicate old new p1) (substitute_in_predicate old new p2)
 substitute_in_predicate old new (PImplies p1 p2) =
   PImplies (substitute_in_predicate old new p1) (substitute_in_predicate old new p2)
 substitute_in_predicate old new (PNot p) = PNot (substitute_in_predicate old new p)
 substitute_in_predicate old new (PEP (EPEq e1 e2)) =
-  let e1' = if e1 == old then new else (substitute_in_expression old new e1)
-      e2' = if e2 == old then new else (substitute_in_expression old new e2)
+  let e1' = substitute_in_expression old new e1
+      e2' = substitute_in_expression old new e2
   in (PEP (EPEq e1' e2'))
 
 substitute_in_predicate old new (PEP (EPNeq e1 e2)) =
-  let e1' = if e1 == old then new else (substitute_in_expression old new e1)
-      e2' = if e2 == old then new else (substitute_in_expression old new e2)
+  let e1' = substitute_in_expression old new e1
+      e2' = substitute_in_expression old new e2
   in (PEP (EPNeq e1' e2'))
+  
 substitute_in_predicate old new (PEP (EPGTE e1 e2)) =
-  let e1' = if e1 == old then new else (substitute_in_expression old new e1)
-      e2' = if e2 == old then new else (substitute_in_expression old new e2)
+  let e1' = substitute_in_expression old new e1
+      e2' = substitute_in_expression old new e2
   in (PEP (EPGTE e1' e2'))
 
 substitute_in_predicate old new (PAll v p) =
@@ -155,7 +182,7 @@ substitute_in_predicate old new (PITE ep p1 p2) =
 
 -- Generate VC for a program and prepend the initial guarantees `Pre`
 withInitialPre :: A.Program -> Predicate
-withInitialPre prog = PAll "n" (PImplies (PEP (EPGTE (EVar "n") (EImm 1))) (substitute_in_predicate (EVar "r2") (EVar "n") $ wp_prog prog))
+withInitialPre prog = PAll "n" (PImplies (PEP (EPGTE (EPrim (PVar "n")) (EPrim (PImm 1)))) (substitute_in_predicate (PVar "r2") (PVar "n") $ wp_prog prog))
 
 
 -- From meeting
@@ -163,20 +190,20 @@ wp_inst :: FWProgram -> Index -> Predicate -> Predicate
 wp_inst prog idx q =
   case prog V.! idx of
     Exit -> PEP EPTrue
-    Assign x (EDiv e1 e2) ->
+    Assign x (EDiv p1 p2) ->
       let q' = wp_inst prog (idx+1) q
-          (EVar v) = freshVar q'
-          q'sub = substitute_in_predicate (EVar x) (EVar v) q'
-          ep = (PEP (EPEq (EVar v) (EDiv e1 e2)))
-          notZeroAssert = PEP (EPNeq e2 (EImm 0))
+          v = freshVar q'
+          q'sub = substitute_in_predicate (PVar x) (PVar v) q'
+          ep = (PEP (EPEq (EPrim (PVar v)) (EDiv p1 p2)))
+          notZeroAssert = PEP (EPNeq (EPrim p2) (EPrim (PImm 0)))
       in PAll v (PAnd notZeroAssert (PImplies ep q'sub))
           
     Assign x e ->
       let  q' = wp_inst prog (idx+1) q
-           (EVar v) = freshVar q'
-           q'sub = substitute_in_predicate (EVar x) (EVar v) q'
-           ep = PEP (EPEq (EVar v) e)
-      in PAll v (PImplies ep q'sub) --(substitute_in_predicate (EVar x) (EVar v) (wp_inst2 prog (idx+1) q)))
+           v = freshVar q'
+           q'sub = substitute_in_predicate (PVar x) (PVar v) q'
+           ep = PEP (EPEq (EPrim (PVar v)) e)
+      in PAll v (PImplies ep q'sub)
     Cond ep offset ->
       PITE ep (wp_inst prog (idx + 1 + offset) q) (wp_inst prog (idx+1) q)
     _ -> undefined
@@ -190,97 +217,97 @@ toFWProg = V.fromList . map toFWProg'
 toFWProg' :: A.Instruction -> Instr
 toFWProg' A.Exit = Exit
 toFWProg' (A.Binary A.B64 A.Mov rd (Left rs)) =
-  let (EVar vname) = reg2var rd  
+  let (EPrim (PVar vname)) = reg2var rd  
       rs' = reg2var rs
   in Assign vname rs'
 
 toFWProg' (A.Binary A.B64 A.Mov rd (Right imm)) =
-  let (EVar vname) = reg2var rd
-      imm' = EImm (fromIntegral imm)
+  let (EPrim (PVar vname)) = reg2var rd
+      imm' = EPrim $ PImm (fromIntegral imm)
   in Assign vname imm'
 
 
 -- Arithmetic
 toFWProg' (A.Binary A.B64 A.Add rd (Right imm)) =
-  let (EVar vname) = reg2var rd 
-      imm' = EImm (fromIntegral imm)
-  in Assign vname (EAdd (EVar vname) imm')
+  let (EPrim (PVar vname)) = reg2var rd 
+      imm' = PImm (fromIntegral imm)
+  in Assign vname (EAdd (PVar vname) imm')
 
 toFWProg' (A.Binary A.B64 A.Add rd (Left rs)) =
-  let (EVar vname) = reg2var rd 
-      rs' = reg2var rs
-  in Assign vname (EAdd (EVar vname) rs')
+  let (EPrim (PVar vname)) = reg2var rd 
+      (EPrim rs') =  reg2var rs
+  in Assign vname (EAdd (PVar vname) rs')
 
 toFWProg' (A.Binary A.B64 A.Mul rd (Right imm)) =
-  let (EVar vname) = reg2var rd 
-      imm' = EImm (fromIntegral imm)
-  in Assign vname (EMul (EVar vname) imm')
+  let (EPrim (PVar vname)) = reg2var rd 
+      imm' = PImm (fromIntegral imm)
+  in Assign vname (EMul (PVar vname) imm')
 
 toFWProg' (A.Binary A.B64 A.Mul rd (Left rs)) =
-  let (EVar vname) = reg2var rd 
-      rs' = reg2var rs
-  in Assign vname (EMul (EVar vname) rs')
+  let (EPrim (PVar vname)) = reg2var rd 
+      (EPrim rs') = reg2var rs
+  in Assign vname (EMul (PVar vname) rs')
 
 toFWProg' (A.Binary A.B64 A.Xor rd (Right imm)) =
-  let (EVar vname) = reg2var rd 
-      imm' = EImm (fromIntegral imm)
-  in Assign vname (EXor (EVar vname) imm')
+  let (EPrim (PVar vname)) = reg2var rd 
+      imm' = PImm $ fromIntegral imm
+  in Assign vname (EXor (PVar vname) imm')
 
 toFWProg' (A.Binary A.B64 A.Xor rd (Left rs)) =
-  let (EVar vname) = reg2var rd 
-      rs' = reg2var rs
-  in Assign vname (EXor (EVar vname) rs')
+  let (EPrim (PVar vname)) = reg2var rd 
+      (EPrim rs') = reg2var rs
+  in Assign vname (EXor (PVar vname) rs')
 
 
 toFWProg' (A.Binary A.B64 A.Div rd (Right imm)) =
-  let (EVar vname) = reg2var rd 
-      imm' = EImm (fromIntegral imm)
-  in Assign vname (EDiv (EVar vname) imm')
+  let (EPrim (PVar vname)) = reg2var rd 
+      imm' = PImm (fromIntegral imm)
+  in Assign vname (EDiv (PVar vname) imm')
 
 toFWProg' (A.Binary A.B64 A.Div rd (Left rs)) =
-  let (EVar vname) = reg2var rd 
-      rs' = reg2var rs
-  in Assign vname (EDiv (EVar vname) rs')
+  let (EPrim (PVar vname)) = reg2var rd 
+      (EPrim rs') = reg2var rs
+  in Assign vname (EDiv (PVar vname) rs')
 
 
 
 -- Conditionals
 toFWProg' (A.JCond A.Jeq rd (Right imm) off) =
-  let (EVar vname) = reg2var rd
-      imm' = EImm $ fromIntegral imm
-      ep = EPEq (EVar vname) imm'
+  let (EPrim (PVar vname)) = reg2var rd
+      imm' = EPrim (PImm $ fromIntegral imm)
+      ep = EPEq (EPrim (PVar vname)) imm'
   in Cond ep (fromIntegral off)
 
 toFWProg' (A.JCond A.Jeq rd (Left rs) off) =
-  let (EVar vname) = reg2var rd
+  let (EPrim (PVar vname)) = reg2var rd
       rs' = reg2var rs
-      ep = EPEq (EVar vname) rs'
+      ep = EPEq (EPrim (PVar vname)) rs'
       off' = fromIntegral off
   in Cond ep off'
 
 toFWProg' (A.JCond A.Jgt rd (Right imm) off) =
-  let (EVar vname) = reg2var rd
-      imm' = EImm $ fromIntegral imm
-      ep = EPGTE (EVar vname) imm'
+  let (EPrim (PVar vname)) = reg2var rd
+      imm' = EPrim (PImm $ fromIntegral imm)
+      ep = EPGTE (EPrim (PVar vname)) imm'
   in Cond ep (fromIntegral off)
 
 toFWProg' (A.JCond A.Jgt rd (Left rs) off) =
-  let (EVar vname) = reg2var rd
+  let (EPrim (PVar vname)) = reg2var rd
       rs' = reg2var rs
-      ep = EPGTE (EVar vname) rs'
+      ep = EPGTE (EPrim (PVar vname)) rs'
       off' = fromIntegral off
   in Cond ep off'
   
 toFWProg' (A.JCond A.Jne rd (Right imm) off) =
-  let (EVar vname) = reg2var rd
-      imm' = EImm $ fromIntegral imm
-      ep = EPNeq (EVar vname) imm'
+  let (EPrim (PVar vname)) = reg2var rd
+      imm' = (EPrim (PImm $ fromIntegral imm))
+      ep = EPNeq (EPrim (PVar vname)) imm'
   in Cond ep (fromIntegral off)
 
 toFWProg' (A.JCond A.Jne rd (Left rs) off) =
-  let (EVar vname) = reg2var rd
+  let (EPrim (PVar vname)) = reg2var rd
       rs' = reg2var rs
-      ep = EPNeq (EVar vname) rs'
+      ep = EPNeq (EPrim (PVar vname)) rs'
       off' = fromIntegral off
   in Cond ep off'
 

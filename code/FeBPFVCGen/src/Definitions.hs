@@ -9,18 +9,24 @@ import Data.Vector as V
 
 type VName = String
 
+data Primitive =
+    PVar VName
+  | PImm Word32
+  deriving (Eq, Show)
+
 data Expression =
-    EVar VName
-  | EImm Word32
-  | EAdd Expression Expression
-  | EMul Expression Expression
-  | EDiv Expression Expression
-  | EXor Expression Expression
+    EPrim Primitive
+  --   EVar VName
+  -- | EImm Word32
+  | EAdd Primitive Primitive
+  | EMul Primitive Primitive
+  | EDiv Primitive Primitive
+  | EXor Primitive Primitive
   deriving (Eq, Show)
 
 data ExpressionPredicate =
     EPTrue
-  | EPEq Expression Expression
+  | EPEq  Expression Expression
   | EPNeq Expression Expression
   | EPGTE Expression Expression
   deriving (Eq, Show)
