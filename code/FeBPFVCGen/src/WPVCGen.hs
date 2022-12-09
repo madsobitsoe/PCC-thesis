@@ -1,9 +1,8 @@
 module WPVCGen
-
+(pp, pp_smt, with_smt_lib_wrapping, typeCheck, toFWProg, wp_prog, wp_inst, withInitialPre)
 where
 
 import qualified Ebpf.Asm as A
-import Data.Word
 import qualified Data.Vector as V
 import qualified Data.Map.Strict as M
 import Util
@@ -17,8 +16,6 @@ ppPrim (PImm imm) = show imm
 -- Pretty printing of expressions
 ppE :: Expression -> String
 ppE (EPrim prim) = ppPrim prim
--- ppE (EVar s) = s
--- ppE (EImm imm) = show imm
 ppE (EAdd p1 p2) = ppPrim p1 ++ " + " ++ ppPrim p2
 ppE (EMul p1 p2) = ppPrim p1 ++ " * " ++ ppPrim p2
 ppE (EDiv p1 p2) = ppPrim p1 ++ " / " ++ ppPrim p2
@@ -50,8 +47,6 @@ with_smt_lib_wrapping s =
   "(assert (not\n" ++
   s ++
   "\n))\n(check-sat)\n(exit)\n"
-
-
 
 -- Pretty print primitive in smtlib2 format
 ppPrim_smt :: Primitive -> String
@@ -86,11 +81,19 @@ ppP_smt d (PITE ep p1 p2) = ppIndent d ++ "(ite " ++ ppEP_smt ep ++ "\n" ++ ppP_
 pp_smt :: Predicate -> String
 pp_smt predicate = ppP_smt 1 predicate
 
+-- Given a predicate, return a fresh variable not used in the predicate
+freshVar :: Predicate -> VName
+freshVar predicate =
+  let used = varsInPredicate predicate
+      allFresh = map (\n -> "v" ++ show n) [0..]
+      unused = filter (\v -> not $ elem v used) allFresh
+  in
+    head unused
 
 
 varsInPrimitive :: Primitive -> [VName]
-varsInPrimitive (PImm imm) = []
 varsInPrimitive (PVar v) = [v]
+varsInPrimitive _  = []
 -- Extract used variables from expression
 varsInExpression :: Expression -> [VName]
 varsInExpression (EPrim prim) = varsInPrimitive prim
@@ -100,7 +103,6 @@ varsInExpression (EMul p1 p2) = varsInPrimitive p1 ++ varsInPrimitive p2
 varsInExpression (EDiv p1 p2) = varsInPrimitive p1 ++ varsInPrimitive p2
 varsInExpression (EXor p1 p2) = varsInPrimitive p1 ++ varsInPrimitive p2
 
-varsInExpression _ = []
 -- Extract used variables from expression predicate
 varsInExpressionPredicate :: ExpressionPredicate -> [VName]
 varsInExpressionPredicate EPTrue = []
@@ -116,15 +118,6 @@ varsInPredicate (PImplies p1 p2) = varsInPredicate p1 ++ varsInPredicate p2
 varsInPredicate (PEP ep) = varsInExpressionPredicate ep
 varsInPredicate (PITE ep p1 p2) = varsInExpressionPredicate ep ++ varsInPredicate p1 ++ varsInPredicate p2
 
--- Given a predicate, return a fresh variable not used in the predicate
-freshVar :: Predicate -> VName
-freshVar predicate =
-  let used = varsInPredicate predicate
-      allFresh = map (\n -> "v" ++ show n) [0..]
-      unused = filter (\v -> not $ elem v used) allFresh
-  in
-    head unused
-
 
 substitute_in_primitive :: Primitive -> Primitive -> Primitive -> Primitive
 substitute_in_primitive _ _ (PImm imm) = (PImm imm)
@@ -138,17 +131,12 @@ substitute_in_expression old new (EMul p1 p2) = EMul (substitute_in_primitive ol
 substitute_in_expression old new (EDiv p1 p2) = EDiv (substitute_in_primitive old new p1) (substitute_in_primitive old new p2)
 substitute_in_expression old new (EXor p1 p2) = EXor (substitute_in_primitive old new p1) (substitute_in_primitive old new p2)
 substitute_in_expression _ _ e = e
--- substitute_in_expression old new e =
---   if old == e then new
---   else e
 
 substitute_in_expression_predicate :: Primitive -> Primitive ->  ExpressionPredicate -> ExpressionPredicate
 substitute_in_expression_predicate _ _ EPTrue = EPTrue
 substitute_in_expression_predicate old new (EPEq  p1 e2) = EPEq  (substitute_in_primitive old new p1) (substitute_in_expression old new e2)
 substitute_in_expression_predicate old new (EPNeq p1 e2) = EPNeq (substitute_in_primitive old new p1) (substitute_in_expression old new e2)
 substitute_in_expression_predicate old new (EPGTE p1 e2) = EPGTE (substitute_in_primitive old new p1) (substitute_in_expression old new e2)
-
-
 
 substitute_in_predicate :: Primitive -> Primitive -> Predicate -> Predicate
 substitute_in_predicate _ _ (PEP EPTrue) = PEP EPTrue
@@ -157,21 +145,6 @@ substitute_in_predicate old new (PImplies p1 p2) =
   PImplies (substitute_in_predicate old new p1) (substitute_in_predicate old new p2)
 substitute_in_predicate old new (PNot p) = PNot (substitute_in_predicate old new p)
 substitute_in_predicate old new (PEP ep) = PEP $ substitute_in_expression_predicate old new ep
--- (EPEq e1 e2)) =
---   let e1' = substitute_in_expression old new e1
---       e2' = substitute_in_expression old new e2
---   in (PEP (EPEq e1' e2'))
-
--- substitute_in_predicate old new (PEP (EPNeq e1 e2)) =
---   let e1' = substitute_in_expression old new e1
---       e2' = substitute_in_expression old new e2
---   in (PEP (EPNeq e1' e2'))
-  
--- substitute_in_predicate old new (PEP (EPGTE e1 e2)) =
---   let e1' = substitute_in_expression old new e1
---       e2' = substitute_in_expression old new e2
---   in (PEP (EPGTE e1' e2'))
-
 substitute_in_predicate old new (PAll v p) =
   let p' = substitute_in_predicate old new p
   in PAll v p'
@@ -187,7 +160,6 @@ withInitialPre :: A.Program -> Predicate
 withInitialPre prog = PAll "n" (PImplies (PEP (EPGTE (PVar "n") (EPrim (PImm 1)))) (substitute_in_predicate (PVar "r2") (PVar "n") $ wp_prog prog))
 
 
--- From meeting
 wp_inst :: FWProgram -> Index -> Predicate -> Predicate
 wp_inst prog idx q =
   case prog V.! idx of
@@ -208,7 +180,7 @@ wp_inst prog idx q =
       in PAll v (PImplies ep q'sub)
     Cond ep offset ->
       PITE ep (wp_inst prog (idx + 1 + offset) q) (wp_inst prog (idx+1) q)
-    _ -> undefined
+
 
 wp_prog :: A.Program -> Predicate
 wp_prog prog = wp_inst (toFWProg prog) 0 (PEP EPTrue)
@@ -227,7 +199,6 @@ toFWProg' (A.Binary A.B64 A.Mov rd (Right imm)) =
   let (PVar v) = reg2var rd
       imm' = EPrim $ PImm (fromIntegral imm)
   in Assign v imm'
-
 
 -- Arithmetic
 toFWProg' (A.Binary A.B64 A.Add rd (Right imm)) =
@@ -271,8 +242,6 @@ toFWProg' (A.Binary A.B64 A.Div rd (Left rs)) =
       rs' = reg2var rs
   in Assign v (EDiv (PVar v) rs')
 
-
-
 -- Conditionals
 toFWProg' (A.JCond A.Jeq rd (Right imm) off) =
   let v = reg2var rd
@@ -313,23 +282,46 @@ toFWProg' (A.JCond A.Jne rd (Left rs) off) =
       off' = fromIntegral off
   in Cond ep off'
 
+toFWProg' (A.Load A.B64 rd rs off) =
+  -- TODO: Can this be done in a cleaner/better/prettier way than hardcoding?
+  let (PVar v) = reg2var rd
+      (PVar src) = reg2var rs
+      rs' =
+        case src of
+          "m" -> Mem src (PVar "r2")
+          "fp" -> Mem src (PImm $ fromIntegral 512)
+          -- For now, make it a mem of size 0
+          _ -> Mem src (PImm $ fromIntegral 0)
+      off' =
+        case off of
+          Nothing -> PImm $ fromIntegral 0
+          Just x ->  PImm $ fromIntegral x
+  in Assign v (ELoad rs' off')
 
-  
 toFWProg' _ = undefined
 
 
 getType :: Primitive -> FWTypeEnv -> Either String FWType
 getType prim env =
   case prim of
-    PImm _ -> Right Int64
+    PImm _ -> Right TInt64
     PVar x -> case M.lookup x env of
       Nothing -> Left $ show prim ++ " was not in type environment"
       Just t -> Right t
+
 
 getExpType :: Expression -> FWTypeEnv -> Either String FWType
 getExpType e env =
   case e of
     EPrim prim -> getType prim env
+    -- ELoad (Mem _ (PImm 0)) _ -> Left "Memory cannot be size 0"
+    ELoad (Mem _ _) p ->
+      case getType p env of
+        Left err -> Left err
+        Right t ->
+          case t of
+            TInt64 -> Right t
+            _ -> Left $ show t ++ " not allowed in load operation"
     EAdd p1 p2 -> doIt p1 p2
     EMul p1 p2 -> doIt p1 p2
     EDiv p1 p2 -> doIt p1 p2
@@ -342,10 +334,9 @@ getExpType e env =
           case getType p2 env of
             Left err -> Left err
             Right t2 ->
-              if t1 == Int64 && t1 == t2 then Right t1
+              if t1 == TInt64 && t1 == t2 then Right t1
               else
                 Left $ "types " ++ show t1 ++ " and " ++ show t2 ++ " do not match or are not allowed in arithmetic"
-
 
 getExpPredType :: ExpressionPredicate -> FWTypeEnv -> Either String FWType
 getExpPredType ep env =
@@ -362,13 +353,11 @@ getExpPredType ep env =
           case getExpType e env of
             Left err -> Left err
             Right t2 ->
-              if t1 == Int64 && t1 == t2 then Right t1
+              if t1 == TInt64 && t1 == t2 then Right t1
               else Left $ "types " ++ show t1 ++ " and " ++ show t2 ++ " do not match or are not allowed in comparisons"
-              
 
 typeCheck :: FWProgram -> Either String FWProgram
 typeCheck prog = typeCheck' prog initialTypeEnvironment 0
-
 
 typeCheck' :: FWProgram -> FWTypeEnv -> Index -> Either String FWProgram
 typeCheck' prog env idx =
@@ -387,6 +376,4 @@ typeCheck' prog env idx =
             case typeCheck' prog env (idx+1+offset) of
               Left err -> Left err
               Right _ -> typeCheck' prog env (idx+1)
-    _ -> Left "not implemented yet"
-    
 

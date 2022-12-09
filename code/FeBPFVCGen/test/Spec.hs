@@ -225,6 +225,19 @@ typecheck_tests = testGroup "Typecheck tests" [
               Right _ -> False
       in
         assertBool "Arithmetic with pointer should not type check" res
-    
+    , testCase "(type)-Valid load typechecks" $
+      let prog = [A.Load A.B64 (A.Reg 0) (A.Reg 1) Nothing
+                 , A.Exit]
+          fwprog = toFWProg prog
+      in
+        Right fwprog @?= typeCheck fwprog
+    , testCase "(type)-Valid load from mov typechecks" $
+      let prog = [A.Binary A.B64 A.Mov (A.Reg 3) (Left (A.Reg 1))
+                 ,A.Load A.B64 (A.Reg 0) (A.Reg 3) Nothing
+                 , A.Exit]
+          fwprog = toFWProg prog
+      in
+        typeCheck fwprog @?= Right fwprog
+            
   ]
 

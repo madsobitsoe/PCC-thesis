@@ -17,7 +17,7 @@ reg2var (A.Reg 6) = PVar "r6"
 reg2var (A.Reg 7) = PVar "r7"
 reg2var (A.Reg 8) = PVar "r8"
 reg2var (A.Reg 9) = PVar "r9"
-reg2var (A.Reg 10) = PVar "r10"
+reg2var (A.Reg 10) = PVar "fp"
 reg2var _ = undefined
 
 -- Convert a Word32 to a smtlib2 compatible bit-vector constant

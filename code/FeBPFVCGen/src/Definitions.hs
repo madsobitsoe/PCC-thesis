@@ -2,9 +2,9 @@ module Definitions
   where
 
 
-import Ebpf.Asm as A
-import Data.Maybe
-import Data.Word
+-- import Ebpf.Asm as A
+-- import Data.Maybe
+import Data.Word (Word32)
 import Data.Vector as V
 import Data.Map.Strict as M 
 
@@ -15,12 +15,16 @@ data Primitive =
   | PImm Word32
   deriving (Eq, Show)
 
+data Mem = Mem VName Primitive
+  deriving (Eq, Show)
+
 data Expression =
     EPrim Primitive
   | EAdd Primitive Primitive
   | EMul Primitive Primitive
   | EDiv Primitive Primitive
   | EXor Primitive Primitive
+  | ELoad Mem Primitive
   deriving (Eq, Show)
 
 data ExpressionPredicate =
@@ -50,21 +54,21 @@ data Instr =
   | Exit
   deriving (Eq, Show)
 
-data FWType = Int64 | Mem Primitive | Unknown
+data FWType = TInt64 | TMem Primitive | TUnknown
   deriving (Eq, Show)
 type FWTypeEnv = M.Map VName FWType
 
 initialTypeEnvironment :: FWTypeEnv
 initialTypeEnvironment =
-  M.fromList [("r0", Unknown)
-             ,("r1", Mem (PVar "r2"))
-             ,("r2", Int64)
-             ,("r3", Unknown)
-             ,("r4", Unknown)
-             ,("r5", Unknown)
-             ,("r6", Unknown)
-             ,("r7", Unknown)
-             ,("r8", Unknown)
-             ,("r9", Unknown)
-             ,("r10", Mem (PImm $ fromIntegral 512))
+  M.fromList [("r0",  TUnknown)
+             ,("m",  TMem (PVar "n"))
+             ,("n",  TInt64)
+             ,("r3",  TUnknown)
+             ,("r4",  TUnknown)
+             ,("r5",  TUnknown)
+             ,("r6",  TUnknown)
+             ,("r7",  TUnknown)
+             ,("r8",  TUnknown)
+             ,("r9",  TUnknown)
+             ,("r10", TMem (PImm $ fromIntegral 512))
              ]
