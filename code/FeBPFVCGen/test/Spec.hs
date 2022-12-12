@@ -38,6 +38,21 @@ wp_vcgen_tests = testGroup "WPVCGen tests" [
     in
       wp_inst progFW 0 initial @?= initial
 
+    , testCase "mov reg reg substitutes without forall" $
+    let progA = [A.Binary A.B64 A.Mov (A.Reg 0) (Left (A.Reg 2))
+                ,A.Binary A.B64 A.Mov (A.Reg 3) (Left (A.Reg 0))
+                ,A.Binary A.B64 A.Mov (A.Reg 4) (Left (A.Reg 3))
+                ,A.Binary A.B64 A.Mov (A.Reg 5) (Left (A.Reg 4))
+                ,A.Binary A.B64 A.Mov (A.Reg 6) (Left (A.Reg 5))
+                ,A.Binary A.B64 A.Mov (A.Reg 7) (Left (A.Reg 6))
+                ,A.Binary A.B64 A.Div (A.Reg 7) (Left (A.Reg 2))                
+                ,A.Exit]
+        progFW = toFWProg progA
+        initial = PEP EPTrue
+        expected = (PAll "v0" (PAnd (PEP (EPNeq (PVar "n") (EPrim (PImm 0)))) (PImplies (PEP (EPEq (PVar "v0") (EDiv (PVar "n") (PVar "n")))) (PEP EPTrue))))
+    in
+      wp_inst progFW 0 initial @?= expected
+
   ]
 
 typecheck_tests = testGroup "Typecheck tests" [

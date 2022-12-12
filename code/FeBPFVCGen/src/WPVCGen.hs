@@ -164,6 +164,12 @@ wp_inst :: FWProgram -> Index -> Predicate -> Predicate
 wp_inst prog idx q =
   case prog V.! idx of
     Exit -> PEP EPTrue
+    -- mov rd, rs should just substitute rd immediately without a fresh variable
+    Assign x (EPrim (PVar v)) ->
+      let q' = wp_inst prog (idx+1) q
+          q'sub = substitute_in_predicate (PVar x) (PVar v) q'
+      in q'sub
+
     Assign x (EDiv p1 p2) ->
       let q' = wp_inst prog (idx+1) q
           v = freshVar q'
@@ -321,7 +327,7 @@ getExpType e env =
         Right t ->
           case t of
             TInt64 -> Right t
-            _ -> Left $ show t ++ " not allowed in load operation"
+            _ -> Left $ show t ++ " not allowed as index in load operation. Index must be int64"
     EAdd p1 p2 -> doIt p1 p2
     EMul p1 p2 -> doIt p1 p2
     EDiv p1 p2 -> doIt p1 p2
