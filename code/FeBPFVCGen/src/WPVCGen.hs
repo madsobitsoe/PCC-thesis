@@ -189,7 +189,11 @@ wp_inst prog idx q =
 
 
 wp_prog :: A.Program -> Predicate
-wp_prog prog = wp_inst (toFWProg prog) 0 (PEP EPTrue)
+wp_prog prog =
+  case typeCheck (toFWProg prog) of
+    Left err -> undefined
+    Right prog' -> wp_inst prog' 0 (PEP EPTrue)
+
 
 toFWProg :: A.Program -> FWProgram
 toFWProg = V.fromList . map toFWProg'
@@ -294,10 +298,9 @@ toFWProg' (A.Load A.B64 rd rs off) =
       (PVar src) = reg2var rs
       rs' =
         case src of
-          "m" -> Mem src (PVar "r2")
-          "fp" -> Mem src (PImm $ fromIntegral 512)
-          -- For now, make it a mem of size 0
-          _ -> Mem src (PImm $ fromIntegral 0)
+          "m" -> Mem src (Just (PVar "n"))
+          "fp" -> Mem src (Just (PImm $ fromIntegral 512))
+          _ -> Mem src Nothing
       off' =
         case off of
           Nothing -> PImm $ fromIntegral 0
@@ -321,13 +324,32 @@ getExpType e env =
   case e of
     EPrim prim -> getType prim env
     -- ELoad (Mem _ (PImm 0)) _ -> Left "Memory cannot be size 0"
-    ELoad (Mem _ _) p ->
-      case getType p env of
-        Left err -> Left err
-        Right t ->
-          case t of
-            TInt64 -> Right t
-            _ -> Left $ show t ++ " not allowed as index in load operation. Index must be int64"
+    ELoad (Mem v psz) p ->
+      case psz of
+        Nothing ->
+          -- Check if we have a type for v in the type environment
+          case getType (PVar v) env of
+            Left _ -> Left $ "Mem in var " ++ show v ++ " has no size"
+            Right t -> Left $ "WE HAVE A TYPE!"
+        Just x ->
+          case getType x env of
+            Left err -> Left err
+            Right TUnknown -> Left $ "type of size of mem " ++ show v ++ " is unknown"
+            Right (TMem _) -> Left $ "mem used as size"
+            Right TInt64 ->
+              case getType p env of
+                Left err -> Left err
+                Right t ->
+                  case t of
+                    TInt64 -> Right t
+                    _ -> Left $ show t ++ " not allowed as index in load operation. Index must be int64"
+    -- ELoad (Mem _ _) p ->
+    --   case getType p env of
+    --     Left err -> Left err
+    --     Right t ->
+    --       case t of
+    --         TInt64 -> Right t
+    --         _ -> Left $ show t ++ " not allowed as index in load operation. Index must be int64"
     EAdd p1 p2 -> doIt p1 p2
     EMul p1 p2 -> doIt p1 p2
     EDiv p1 p2 -> doIt p1 p2
@@ -369,6 +391,24 @@ typeCheck' :: FWProgram -> FWTypeEnv -> Index -> Either String FWProgram
 typeCheck' prog env idx =
   case prog V.! idx of
     Exit -> Right prog
+    Assign x (ELoad (Mem v sz) i) ->
+      -- We might have "nothing" as the size,
+      -- if we do, check if we have the size in the type environment (which we should have)
+      -- and update the program to reflect this
+      case sz of
+        Nothing ->
+          case getType (PVar v) env of
+            Left err -> Left err
+            Right (TMem prim) ->
+              let prog' = prog V.// [(idx,  Assign x (ELoad (Mem v (Just prim)) i))]
+              in typeCheck' prog' env (idx+1)
+              
+        Just _ ->
+          case getExpType (ELoad (Mem v sz) i) env of
+            Left err -> Left err
+            Right t ->
+              let env' = M.insert x t env
+              in typeCheck' prog env' (idx+1)
     Assign x e ->    
       case getExpType e env of
         Left err -> Left err

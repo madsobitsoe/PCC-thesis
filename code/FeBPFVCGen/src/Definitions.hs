@@ -12,7 +12,14 @@ data Primitive =
   | PImm Word32
   deriving (Eq, Show)
 
-data Mem = Mem VName Primitive
+-- data Mem = Mem VName Primitive
+--   deriving (Eq, Show)
+
+-- data Mem2 p = Mem2 VName p
+--   deriving (Eq, Show)
+
+
+data Mem = Mem VName (Maybe Primitive)
   deriving (Eq, Show)
 
 data Expression =

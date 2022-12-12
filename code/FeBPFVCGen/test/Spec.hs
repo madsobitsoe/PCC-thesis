@@ -245,14 +245,18 @@ typecheck_tests = testGroup "Typecheck tests" [
                  , A.Exit]
           fwprog = toFWProg prog
       in
-        Right fwprog @?= typeCheck fwprog
+        typeCheck fwprog @?= Right fwprog
     , testCase "(type)-Valid load from mov typechecks" $
       let prog = [A.Binary A.B64 A.Mov (A.Reg 3) (Left (A.Reg 1))
                  ,A.Load A.B64 (A.Reg 0) (A.Reg 3) Nothing
                  , A.Exit]
           fwprog = toFWProg prog
+          res = case typeCheck fwprog of
+            Left _ -> False
+            Right _ -> True
       in
-        typeCheck fwprog @?= Right fwprog
+        assertBool "Moving a mem around did not typecheck as expected" res
+
             
   ]
 
