@@ -1,9 +1,6 @@
 module Definitions
   where
 
-
--- import Ebpf.Asm as A
--- import Data.Maybe
 import Data.Word (Word32)
 import Data.Vector as V
 import Data.Map.Strict as M 
