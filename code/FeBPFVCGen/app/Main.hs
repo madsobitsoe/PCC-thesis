@@ -12,6 +12,7 @@ import System.Process
 data Tool = VCGen
           | Default
           | GetProof
+          | Debug
   deriving Show
           
 data Options = Options { tool :: Tool
@@ -39,6 +40,10 @@ options = info (opts <**> helper)
            flag' GetProof (long "get-proof"
                            <> short 'p'
                            <> help "Parse asm file, generate VC and call cvc5-Linux to obtain a proof in lfsc format. Requires cvc5-Linux to be installed.")
+           <|>
+           flag' Debug (long "debug"
+                        <> short 'q'
+                        <> help "Parse asm file, generate VC and print the AST for the parsed program, the AST for the VC, the prettified VC and the smtlib output for the VC" )
     infile = optional $ strOption (long "input"
                                    <> short 'i'
                                    <> metavar "INFILE"
@@ -52,12 +57,15 @@ options = info (opts <**> helper)
 run :: Program -> IO ()
 run p =
   do
-    let predicate = withInitialPre p
-    putStrLn $ "Program: " ++ show p
-    putStrLn $ "Predicate: " ++ show predicate
-    putStrLn $ "prettified predicate: " ++ pp predicate
-    putStrLn "As smtlib2:"
-    putStrLn $ with_smt_lib_wrapping $ pp_smt predicate
+    case withInitialPre p of
+      Left err -> print err
+      Right predicate -> do
+    -- let predicate = withInitialPre p
+        putStrLn $ "Program: " ++ show p
+        putStrLn $ "Predicate: " ++ show predicate
+        putStrLn $ "prettified predicate: " ++ pp predicate
+        putStrLn "As smtlib2:"
+        putStrLn $ with_smt_lib_wrapping $ pp_smt predicate
 
 main :: IO ()
 main =
@@ -72,13 +80,28 @@ main =
             case res of
               Left err -> print err
               Right prog ->
-                let predicate = withInitialPre prog
-                    spred = with_smt_lib_wrapping $ pp_smt predicate
-                in
-                  case outfile of
-                    Nothing -> putStrLn spred
-                    Just out -> writeFile out spred
-
+                case withInitialPre prog of
+                  Left err -> print err
+                  Right predicate -> 
+                    -- let predicate = withInitialPre prog
+                        let spred = with_smt_lib_wrapping $ pp_smt predicate
+                    in
+              -- Right prog ->
+              --   let predicate = withInitialPre prog
+              --       spred = with_smt_lib_wrapping $ pp_smt predicate
+              --   in
+                      case outfile of
+                        Nothing -> putStrLn spred
+                        Just out -> writeFile out spred
+      Debug -> do
+        case infile of
+          Nothing -> error "No inputfile to parse"
+          Just file -> do
+            res <- parseFromFile file
+            case res of
+              Left err -> print err
+              Right prog -> do
+                run prog
       -- This is a bad and very hacky way to call cvc5
       -- Basically just a wrapper for a bash command that will only work on linux
       -- and only if cvc5-Linux is in PATH
@@ -90,14 +113,16 @@ main =
             case res of
               Left err -> print err
               Right prog ->
-                let predicate = withInitialPre prog
-                    spred = with_smt_lib_wrapping $ pp_smt predicate
-                in
-                  case outfile of
-                    Nothing -> error "No output filename"
-                    Just out -> do
-                      writeFile out spred
-                      callCommand $ "cvc5-Linux " ++ out ++ " | tail +2 > " ++ (out ++ ".plf")
+                case withInitialPre prog of
+                  Left err -> print err
+                  Right predicate ->
+                    let spred = with_smt_lib_wrapping $ pp_smt predicate
+                    in
+                      case outfile of
+                        Nothing -> error "No output filename"
+                        Just out -> do
+                          writeFile out spred
+                          callCommand $ "cvc5-Linux " ++ out ++ " | tail +2 > " ++ (out ++ ".plf")
 
       Default -> do
         run testProgRegDiv

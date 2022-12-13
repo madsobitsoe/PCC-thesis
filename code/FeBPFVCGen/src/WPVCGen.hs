@@ -156,9 +156,13 @@ substitute_in_predicate old new (PITE ep p1 p2) =
   in (PITE ep' p1' p2')
 
 -- Generate VC for a program and prepend the initial guarantees `Pre`
-withInitialPre :: A.Program -> Predicate
-withInitialPre prog = PAll "n" (PImplies (PEP (EPGTE (PVar "n") (EPrim (PImm 1)))) (substitute_in_predicate (PVar "r2") (PVar "n") $ wp_prog prog))
-
+withInitialPre :: A.Program -> Either String Predicate
+-- withInitialPre prog = PAll "n" (PImplies (PEP (EPGTE (PVar "n") (EPrim (PImm 1)))) (substitute_in_predicate (PVar "r2") (PVar "n") $ wp_prog prog))
+withInitialPre prog =
+  case wp_prog prog of
+    Left err -> Left err
+    Right pred ->
+      Right $ PAll "n" (PImplies (PEP (EPGTE (PVar "n") (EPrim (PImm 1)))) (substitute_in_predicate (PVar "r2") (PVar "n") pred ))
 
 wp_inst :: FWProgram -> Index -> Predicate -> Predicate
 wp_inst prog idx q =
@@ -188,11 +192,12 @@ wp_inst prog idx q =
       PITE ep (wp_inst prog (idx + 1 + offset) q) (wp_inst prog (idx+1) q)
 
 
-wp_prog :: A.Program -> Predicate
+-- wp_prog :: A.Program -> Predicate
+wp_prog :: A.Program -> Either String Predicate
 wp_prog prog =
   case typeCheck (toFWProg prog) of
-    Left err -> undefined
-    Right prog' -> wp_inst prog' 0 (PEP EPTrue)
+    Left err -> Left err
+    Right prog' -> Right $ wp_inst prog' 0 (PEP EPTrue)
 
 
 toFWProg :: A.Program -> FWProgram
@@ -399,9 +404,12 @@ typeCheck' prog env idx =
         Nothing ->
           case getType (PVar v) env of
             Left err -> Left err
+            Right TUnknown -> Left $ "Using unknown type as src for load"
+            Right TInt64 -> Left $ "Using int64 type as src for load"
             Right (TMem prim) ->
               let prog' = prog V.// [(idx,  Assign x (ELoad (Mem v (Just prim)) i))]
               in typeCheck' prog' env (idx+1)
+            
               
         Just _ ->
           case getExpType (ELoad (Mem v sz) i) env of
