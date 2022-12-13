@@ -28,6 +28,7 @@ ppEP (EPEq  p1 e2) = ppPrim p1 ++ " = "  ++ ppE e2
 ppEP (EPNeq p1 e2) = ppPrim p1 ++ " != " ++ ppE e2
 ppEP (EPGTE p1 e2) = ppPrim p1 ++ " >= " ++ ppE e2
 ppEP (EPLTE p1 e2) = ppPrim p1 ++ " <= " ++ ppE e2
+ppEP (EPLT p1 e2) = ppPrim p1 ++ " < " ++ ppE e2
 -- Pretty printing of predicates
 pp :: Predicate -> String
 pp (PEP ep) = ppEP ep
@@ -70,13 +71,14 @@ ppEP_smt (EPEq  p1 e2) = "(= "     ++ ppPrim_smt p1 ++ " " ++ ppE_smt e2 ++ ")"
 ppEP_smt (EPNeq p1 e2) = "(not "   ++ ppEP_smt (EPEq p1 e2) ++ ")"
 ppEP_smt (EPGTE p1 e2) = "(bvuge " ++ ppPrim_smt p1 ++ " " ++ ppE_smt e2 ++ ")"
 ppEP_smt (EPLTE p1 e2) = "(bvule " ++ ppPrim_smt p1 ++ " " ++ ppE_smt e2 ++ ")"
+ppEP_smt (EPLT p1 e2) = "(bvult " ++ ppPrim_smt p1 ++ " " ++ ppE_smt e2 ++ ")"
 -- Pretty print predicate to smtlib2 format
 ppP_smt :: Int -> Predicate -> String
 ppP_smt d (PEP ep) = ppIndent d ++ ppEP_smt ep
 ppP_smt d (PNot p) = ppIndent d ++ "(not " ++ ppP_smt d p ++ ")"
 ppP_smt d (PAnd p1 p2) = ppIndent d ++ "(and \n" ++ ppP_smt (d+1) p1 ++ "\n" ++ ppP_smt (d+1) p2 ++ "\n" ++ ppIndent d ++ ")"
-ppP_smt d (PImplies p1 p2) = "\n" ++ ppIndent d ++ "(=> \n" ++ ppP_smt (d+1) p1 ++ "\n" ++ ppP_smt (d+1) p2 ++ "\n" ++ ppIndent d ++ ")"
-ppP_smt d (PAll v p) = ppIndent d ++ "(forall ((" ++ v ++ " (_ BitVec 64))) " ++ ppP_smt (d+1) p ++ "\n" ++ ppIndent d ++ ")"
+ppP_smt d (PImplies p1 p2) = ppIndent d ++ "(=> \n" ++ ppP_smt (d+1) p1 ++ "\n" ++ ppP_smt (d+1) p2 ++ "\n" ++ ppIndent d ++ ")"
+ppP_smt d (PAll v p) = ppIndent d ++ "(forall ((" ++ v ++ " (_ BitVec 64)))\n" ++ ppP_smt (d+1) p ++ "\n" ++ ppIndent d ++ ")"
 ppP_smt d (PITE ep p1 p2) = ppIndent d ++ "(ite " ++ ppEP_smt ep ++ "\n" ++ ppP_smt (d+1) p1 ++ "\n" ++ ppP_smt (d+1) p2 ++ ")"
 
 -- Pretty print predicate to smtlib2 format
@@ -111,6 +113,8 @@ varsInExpressionPredicate EPTrue = []
 varsInExpressionPredicate (EPEq  p1 e2) = varsInPrimitive p1 ++ varsInExpression e2
 varsInExpressionPredicate (EPNeq p1 e2) = varsInPrimitive p1 ++ varsInExpression e2
 varsInExpressionPredicate (EPGTE p1 e2) = varsInPrimitive p1 ++ varsInExpression e2
+varsInExpressionPredicate (EPLTE p1 e2) = varsInPrimitive p1 ++ varsInExpression e2
+varsInExpressionPredicate (EPLT p1 e2) = varsInPrimitive p1 ++ varsInExpression e2
 -- Extract used variables from predicate
 varsInPredicate :: Predicate -> [VName]
 varsInPredicate (PNot predicate) = varsInPredicate predicate
@@ -140,6 +144,7 @@ substitute_in_expression_predicate old new (EPEq  p1 e2) = EPEq  (substitute_in_
 substitute_in_expression_predicate old new (EPNeq p1 e2) = EPNeq (substitute_in_primitive old new p1) (substitute_in_expression old new e2)
 substitute_in_expression_predicate old new (EPGTE p1 e2) = EPGTE (substitute_in_primitive old new p1) (substitute_in_expression old new e2)
 substitute_in_expression_predicate old new (EPLTE p1 e2) = EPLTE (substitute_in_primitive old new p1) (substitute_in_expression old new e2)
+substitute_in_expression_predicate old new (EPLT p1 e2) = EPLT (substitute_in_primitive old new p1) (substitute_in_expression old new e2)
 
 substitute_in_predicate :: Primitive -> Primitive -> Predicate -> Predicate
 substitute_in_predicate _ _ (PEP EPTrue) = PEP EPTrue
@@ -187,9 +192,11 @@ wp_inst prog idx q =
     Assign x (ELoad (Mem _ (Just sz)) p) ->
       let q' = wp_inst prog (idx+1) q
           v = freshVar q'
+          v' = freshVar (PAll v q')
           q'sub = substitute_in_predicate (PVar x) (PVar v) q'
-          inboundsAssert = PAnd (PEP (EPGTE p (EPrim (PImm 0)))) (PEP (EPLTE p (EPrim sz)))
-      in PAll v (PImplies inboundsAssert q'sub)
+          inboundsAssert = PAnd (PEP (EPGTE p (EPrim (PImm 0)))) (PEP (EPLT p (EPrim sz)))
+          newAss = PEP (EPEq (PVar v) (EPrim (PVar v')))
+      in PAll v (PAll v' (PAnd inboundsAssert (PImplies newAss q'sub)))
     Assign x e ->
       let  q' = wp_inst prog (idx+1) q
            v = freshVar q'
@@ -305,6 +312,33 @@ toFWProg' (A.JCond A.Jne rd (Left rs) off) =
       off' = fromIntegral off
   in Cond ep off'
 
+
+toFWProg' (A.JCond A.Jle rd (Right imm) off) =
+  let v = reg2var rd
+      imm' = EPrim $ PImm $ fromIntegral imm
+      ep = EPLTE v imm'
+  in Cond ep (fromIntegral off)
+
+toFWProg' (A.JCond A.Jle rd (Left rs) off) =
+  let v = reg2var rd
+      rs' = EPrim $ reg2var rs
+      ep = EPLTE v rs'
+      off' = fromIntegral off
+  in Cond ep off'
+
+toFWProg' (A.JCond A.Jlt rd (Right imm) off) =
+  let v = reg2var rd
+      imm' = EPrim $ PImm $ fromIntegral imm
+      ep = EPLT v imm'
+  in Cond ep (fromIntegral off)
+
+toFWProg' (A.JCond A.Jlt rd (Left rs) off) =
+  let v = reg2var rd
+      rs' = EPrim $ reg2var rs
+      ep = EPLT v rs'
+      off' = fromIntegral off
+  in Cond ep off'
+
 toFWProg' (A.Load A.B64 rd rs off) =
   -- TODO: Can this be done in a cleaner/better/prettier way than hardcoding?
   let (PVar v) = reg2var rd
@@ -339,6 +373,8 @@ getExpType e env =
     -- ELoad (Mem _ (PImm 0)) _ -> Left "Memory cannot be size 0"
     ELoad (Mem v psz) p ->
       case psz of
+        -- The nothing case should never happen as we rewrite the program in type check
+        -- purely here for debug purposes
         Nothing ->
           -- Check if we have a type for v in the type environment
           case getType (PVar v) env of
@@ -383,9 +419,11 @@ getExpPredType :: ExpressionPredicate -> FWTypeEnv -> Either String FWType
 getExpPredType ep env =
   case ep of
     EPTrue -> Left "No boolean type in FWeBPF, impossible to check EPTrue"
-    EPEq p e -> doIt p e
+    EPEq p e  -> doIt p e
     EPNeq p e -> doIt p e
     EPGTE p e -> doIt p e
+    EPLTE p e -> doIt p e
+    EPLT p e  -> doIt p e
   where
     doIt p e =
       case getType p env of

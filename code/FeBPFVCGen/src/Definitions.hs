@@ -37,6 +37,7 @@ data ExpressionPredicate =
   | EPNeq Primitive Expression
   | EPGTE Primitive Expression
   | EPLTE Primitive Expression
+  | EPLT Primitive Expression
   deriving (Eq, Show)
 
 data Predicate =
