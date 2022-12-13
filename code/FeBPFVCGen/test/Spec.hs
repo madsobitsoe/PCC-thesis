@@ -256,7 +256,26 @@ typecheck_tests = testGroup "Typecheck tests" [
             Right _ -> True
       in
         assertBool "Moving a mem around did not typecheck as expected" res
-
+    , testCase "(type)-Valid store typechecks" $
+      let prog = [A.Store A.B64 (A.Reg 1) Nothing (Left (A.Reg 2))
+                 , A.Exit]
+          fwprog = toFWProg prog
+          res = case typeCheck fwprog of
+            Left _ -> False
+            Right _ -> True
+      in
+        assertBool "Valid store did not type check" res
+    , testCase "(type)-Valid store with mem from mov typechecks" $
+      let prog = [A.Binary A.B64 A.Mov (A.Reg 3) (Left (A.Reg 1))
+                 , A.Store A.B64 (A.Reg 3) Nothing (Left (A.Reg 2))
+                 , A.Exit]
+          fwprog = toFWProg prog
+          res = case typeCheck fwprog of
+            Left _ -> False
+            Right _ -> True
+      in
+        assertBool "Valid store with mem from mov did not type check" res
+    
             
   ]
 

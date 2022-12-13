@@ -205,8 +205,11 @@ wp_inst prog idx q =
       in PAll v (PImplies ep q'sub)
     Cond ep offset ->
       PITE ep (wp_inst prog (idx + 1 + offset) q) (wp_inst prog (idx+1) q)
-
-
+    Store (Mem _ (Just sz)) offset elm ->
+      let q' = wp_inst prog (idx+1) q
+          inboundsAssert = PAnd (PEP (EPGTE offset (EPrim (PImm 0)))) (PEP (EPLT offset (EPrim sz)))
+      in PAnd inboundsAssert q'
+            
 -- wp_prog :: A.Program -> Predicate
 wp_prog :: A.Program -> Either String Predicate
 wp_prog prog =
@@ -354,6 +357,23 @@ toFWProg' (A.Load A.B64 rd rs off) =
           Just x ->  PImm $ fromIntegral x
   in Assign v (ELoad rs' off')
 
+
+toFWProg' (A.Store A.B64 rd off elm) =
+  let (PVar dst) = reg2var rd
+      mem =
+        case dst of
+          "m" -> Mem dst (Just (PVar "n"))
+          "fp" -> Mem dst (Just (PImm $ fromIntegral 512))
+          _ -> Mem dst Nothing
+      off' =
+        case off of
+          Nothing -> PImm $ fromIntegral 0
+          Just x -> PImm $ fromIntegral x
+      elm' =
+        case elm of
+          Left reg -> reg2var reg
+          Right imm -> PImm $ fromIntegral imm
+  in Store mem off' elm'
 toFWProg' _ = undefined
 
 
@@ -476,4 +496,33 @@ typeCheck' prog env idx =
             case typeCheck' prog env (idx+1+offset) of
               Left err -> Left err
               Right _ -> typeCheck' prog env (idx+1)
-
+    Store (Mem v sz) offset elm ->
+      -- We might have "nothing" as the size,
+      -- if we do, check if we have the size in the type environment (which we should have)
+      -- and update the program to reflect this
+      case sz of
+        Nothing ->
+          case getType (PVar v) env of
+            Left err -> Left err
+            Right TUnknown -> Left $ "Using unknown type as dst for store"
+            Right TInt64 -> Left $ "Using int64 type as dst for store"
+            Right (TMem prim) ->
+              let prog' = prog V.// [(idx,  Store (Mem v (Just prim)) offset elm)] 
+              in typeCheck' prog' env idx
+            
+              
+        Just _ ->
+          case getType offset env of
+            Left err -> Left err
+            Right TUnknown -> Left $ "Using unknown type as offset for store"
+            -- I don't believe this can actually happen
+            Right (TMem _) -> Left $ "Using mem type as dst for store"
+            Right TInt64 ->
+              case getType elm env of
+                Left err -> Left err
+                Right (TMem _) -> Left $ "Storing mem is not allowed"
+                Right TUnknown -> Left $ "Storing unknown values not allowed"
+                Right TInt64 -> typeCheck' prog env (idx+1)
+                  -- let env' = M.insert x t env
+                  -- in typeCheck' prog env' (idx+1)
+            

@@ -57,6 +57,7 @@ data Instr =
     Assign VName Expression
   | Cond ExpressionPredicate Index
   -- | Jmp Index -- Currently no uncond jumps, but hopefully later
+  | Store Mem Primitive Primitive
   | Exit
   deriving (Eq, Show)
 
