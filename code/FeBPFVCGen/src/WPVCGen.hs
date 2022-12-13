@@ -27,6 +27,7 @@ ppEP EPTrue = "true"
 ppEP (EPEq  p1 e2) = ppPrim p1 ++ " = "  ++ ppE e2
 ppEP (EPNeq p1 e2) = ppPrim p1 ++ " != " ++ ppE e2
 ppEP (EPGTE p1 e2) = ppPrim p1 ++ " >= " ++ ppE e2
+ppEP (EPLTE p1 e2) = ppPrim p1 ++ " <= " ++ ppE e2
 -- Pretty printing of predicates
 pp :: Predicate -> String
 pp (PEP ep) = ppEP ep
@@ -68,11 +69,12 @@ ppEP_smt EPTrue = "true"
 ppEP_smt (EPEq  p1 e2) = "(= "     ++ ppPrim_smt p1 ++ " " ++ ppE_smt e2 ++ ")"
 ppEP_smt (EPNeq p1 e2) = "(not "   ++ ppEP_smt (EPEq p1 e2) ++ ")"
 ppEP_smt (EPGTE p1 e2) = "(bvuge " ++ ppPrim_smt p1 ++ " " ++ ppE_smt e2 ++ ")"
+ppEP_smt (EPLTE p1 e2) = "(bvule " ++ ppPrim_smt p1 ++ " " ++ ppE_smt e2 ++ ")"
 -- Pretty print predicate to smtlib2 format
 ppP_smt :: Int -> Predicate -> String
 ppP_smt d (PEP ep) = ppIndent d ++ ppEP_smt ep
 ppP_smt d (PNot p) = ppIndent d ++ "(not " ++ ppP_smt d p ++ ")"
-ppP_smt d (PAnd p1 p2) = "\n" ++ ppIndent d ++ "(and \n" ++ ppP_smt (d+1) p1 ++ ppP_smt (d+1) p2 ++ "\n" ++ ppIndent d ++ ")"
+ppP_smt d (PAnd p1 p2) = ppIndent d ++ "(and \n" ++ ppP_smt (d+1) p1 ++ "\n" ++ ppP_smt (d+1) p2 ++ "\n" ++ ppIndent d ++ ")"
 ppP_smt d (PImplies p1 p2) = "\n" ++ ppIndent d ++ "(=> \n" ++ ppP_smt (d+1) p1 ++ "\n" ++ ppP_smt (d+1) p2 ++ "\n" ++ ppIndent d ++ ")"
 ppP_smt d (PAll v p) = ppIndent d ++ "(forall ((" ++ v ++ " (_ BitVec 64))) " ++ ppP_smt (d+1) p ++ "\n" ++ ppIndent d ++ ")"
 ppP_smt d (PITE ep p1 p2) = ppIndent d ++ "(ite " ++ ppEP_smt ep ++ "\n" ++ ppP_smt (d+1) p1 ++ "\n" ++ ppP_smt (d+1) p2 ++ ")"
@@ -137,6 +139,7 @@ substitute_in_expression_predicate _ _ EPTrue = EPTrue
 substitute_in_expression_predicate old new (EPEq  p1 e2) = EPEq  (substitute_in_primitive old new p1) (substitute_in_expression old new e2)
 substitute_in_expression_predicate old new (EPNeq p1 e2) = EPNeq (substitute_in_primitive old new p1) (substitute_in_expression old new e2)
 substitute_in_expression_predicate old new (EPGTE p1 e2) = EPGTE (substitute_in_primitive old new p1) (substitute_in_expression old new e2)
+substitute_in_expression_predicate old new (EPLTE p1 e2) = EPLTE (substitute_in_primitive old new p1) (substitute_in_expression old new e2)
 
 substitute_in_predicate :: Primitive -> Primitive -> Predicate -> Predicate
 substitute_in_predicate _ _ (PEP EPTrue) = PEP EPTrue
@@ -181,7 +184,12 @@ wp_inst prog idx q =
           ep = (PEP (EPEq (PVar v) (EDiv p1 p2)))
           notZeroAssert = PEP (EPNeq p2 (EPrim (PImm 0)))
       in PAll v (PAnd notZeroAssert (PImplies ep q'sub))
-          
+    Assign x (ELoad (Mem _ (Just sz)) p) ->
+      let q' = wp_inst prog (idx+1) q
+          v = freshVar q'
+          q'sub = substitute_in_predicate (PVar x) (PVar v) q'
+          inboundsAssert = PAnd (PEP (EPGTE p (EPrim (PImm 0)))) (PEP (EPLTE p (EPrim sz)))
+      in PAll v (PImplies inboundsAssert q'sub)
     Assign x e ->
       let  q' = wp_inst prog (idx+1) q
            v = freshVar q'
