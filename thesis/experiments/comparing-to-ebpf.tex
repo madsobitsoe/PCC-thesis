@@ -1,0 +1,32 @@
+\subsection{Comparing Featherweight eBPF and eBPF}
+\label{subsec:comparing_featherweight_ebpf_and_ebpf}
+
+As Featherweight eBPF by definition is a small subset of eBPF, that adds restrictions wrt. to the calling convention of programs, a direct comparison between the two is not possible.
+However, in order to give a valuable assessment of the proof carrying code implementation for Featherweight eBPF, a comparison is needed.
+
+
+eBPF follows the \texttt{x86\_64} calling convention, st. \texttt{r0} is used for the return value, \texttt{r1, r2, r3, r4, r5} are used for arguments to function calls\footnote{\url{https://docs.kernel.org/bpf/instruction-set.html\#registers-and-calling-convention}}.
+From this follows that when eBPF programs are executed, \texttt{r1} will contain a pointer to ``context''\footnote{
+  \url{https://docs.kernel.org/bpf/verifier.html}}.
+
+This pointer in \texttt{r1} \textit{might} point to a structure that contains the size of the memory area, but it depends on the type of the program\footnote{This is not really documented outside of the kernel sources, but this blog post at least gives a brief overview of some types of programs:
+  \url{https://blogs.oracle.com/linux/post/bpf-a-tour-of-program-types}}.
+In Featherweight eBPF I assume that \texttt{r1} contains a pointer to ``context'' and further that \texttt{r2} contains the size of that memory area that is valid to read from.
+
+Luckily eBPF maps allows us to mimic the restrictions in Featherweight eBPF, by prepending a short header to all programs before checking if the eBPF verifier will allow the program to run.
+
+The setup is as follows:
+
+\begin{itemize}
+\item let \texttt{sizemap} be an eBPF array map with a single entry of size 8. This will hold a 64-bit integer $n$.
+\item let \texttt{ctxmap} be an eBPF array map of with a single entry of size $n$. This will represent the context given to a Featherweight eBPF program.
+\item Load the map file descriptor for \texttt{sizemap}, then load the value it contains into \texttt{r2}.
+  \item Load the map file descriptor for \texttt{ctxmap} into \texttt{r1}. 
+  \end{itemize}
+  This will remove any reference to the actual ``context'' of the eBPF program, and ensure the rest of the program will run with the same assumptions as the Featherweight eBPF equivalent.
+
+  
+  After the header has been prepended, we can attempt to load the program using the \texttt{bpf} syscall. This will trigger the in-kernel verifier to analyse and verify the program. If the program verifies and is allowed to run, we get a valid file descriptor in return, if the program does not verify, we get an invalid file descriptor.
+  We are not interested in actually running the program, only whether it verifies or not.
+  
+
