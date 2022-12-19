@@ -25,6 +25,7 @@ data Mem = Mem VName (Maybe Primitive)
 data Expression =
     EPrim Primitive
   | EAdd Primitive Primitive
+  | ESub Primitive Primitive
   | EMul Primitive Primitive
   | EDiv Primitive Primitive
   | EXor Primitive Primitive

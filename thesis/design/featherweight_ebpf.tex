@@ -1,16 +1,13 @@
 \subsection{Featherweight eBPF}
 \label{subsec:featherweight_ebpf}
-Will contain definition of the subset of eBPF I will be covering and working with.
-
-
 Featherweight-eBPF is an IMP-like language representing a small subset of the eBPF ISA.
 
 Main restrictions:
 \begin{itemize}
-\item Only 64-bit values and operations
+\item Only 64-bit values and operations. Operations are unsigned. 
   % \item No jumps or branching. Only straight-line programs.
   \item Only forward jumps are allowed in programs. No looping.
-\item Along with a pointer to the program context (``some memory'') passed to the program in \texttt{r1}, the size of that memory that is valid to read is also passed in \texttt{r2}. 
+\item Along with a pointer to the program context (``some memory'') passed to the program in \texttt{r1}, the size of that memory that is valid to read and write to is also passed in \texttt{r2}. 
 \end{itemize}
 
 
@@ -18,7 +15,7 @@ Main restrictions:
 At the beginning of execution of all programs, assume that
 \begin{itemize}
 \item \texttt{r1} contains \texttt{*ctx}, a pointer to "some memory".
-\item \texttt{r2} contains a 64-bit integer indicating the size of the memory pointed to by \texttt{r1}, i.e. reading bytes between \texttt{r1} and \texttt{r1+(r2-1)} are allowed
+\item \texttt{r2} contains a 64-bit integer indicating the size of the memory pointed to by \texttt{r1}, i.e. reading and writing bytes between \texttt{r1} and \texttt{r1+(r2-8)} are allowed
 \item \texttt{r10} contains a frame pointer to 512 bytes of stack-space for the eBPF program
 \item \texttt{r0}, \texttt{r3}, \texttt{r4}, \texttt{r5}, \texttt{r6}, \texttt{r7}, \texttt{r8} and \texttt{r9} are all "uninitialized", i.e. they have an unknown value at program start. In "proper eBPF" it is invalid to read an uninitialized register. In x86\_64 assembly, i.e. "jited eBPF", it is valid (but stupid in most cases).
 
@@ -48,10 +45,13 @@ Expressions of FWeBPF are defined by the grammar
   \centering
   \begin{tabular}{lclr}
     $e$ & $::=$ & $p$ & (A primitive) \\
-      & $|$ & $p_1 \oplus  p_2$ & (Unsigned addition of two primitives with 64-bit wrapping) \\    
+        & $|$ & $p_1 \oplus  p_2$ & (Unsigned addition of two primitives with 64-bit wrapping) \\
+      & $|$ & $p_1 \ominus  p_2$ & (Unsigned subtraction of two primitives with 64-bit wrapping) \\        
       & $|$ & $p_1 \otimes p_2$ & (Unsigned multiplication of two primitives with 64-bit wrapping) \\    
       & $|$ & $p_1 \oslash p_2$ & (Unsigned division of two primitives with 64-bit wrapping) \\
-      & $|$ & $p_1 ~ \mathrm{xor} ~ p_2$ & (bitwise \texttt{xor} of two primitives with 64-bit wrapping) \\        
+        & $|$ & $p_1 ~ \mathrm{xor} ~ p_2$ & (bitwise \texttt{xor} of two primitives with 64-bit wrapping) \\
+        & $|$ & $p_1 ~ \mathrm{mod} ~ p_2$ & (unsigned modulo operation of two primitives with 64-bit wrapping) \\    
+      & $|$ & $\mathrm{load(p_1,p_2)}$ & (memory load from base pointer $p_1$ with offset $p_2$) \\            
 \end{tabular}    
 \end{figure}
 
@@ -60,9 +60,12 @@ Expression Predicates of FWeBPF are defined by the grammar
   \centering
   \begin{tabular}{lclr}
     $ep$ & $::=$ & \texttt{true} & \\
-     & $|$ & $p = e$ & (Equality of a primitive and an expression) \\    
-     & $|$ & $p \neq e$ & (Inequality of a primitive and an expression) \\
-     & $|$ &  $p \geq e$ & (Greater than or equal of a primitive and an expression) \\
+         & $|$ & $p = e$ & (Equality of a primitive and an expression) \\    
+         & $|$ & $p \neq e$ & (Inequality of a primitive and an expression) \\
+         & $|$ &  $p > e$ & (Greater than of a primitive and an expression) \\            
+         % & $|$ &  $p \geq e$ & (Greater than or equal of a primitive and an expression) \\
+         & $|$ &  $p < e$ & (Less than of a primitive and an expression) \\        
+         & $|$ &  $p \leq e$ & (Less than or equal of a primitive and an expression) \\
 \end{tabular}    
 \end{figure}
 
@@ -74,7 +77,8 @@ Instructions of FWeBPF are defined by the grammar
     $i$ & $::=$ & \texttt{exit} & (Exits the program with \texttt{r0} as return value) \\
         & $|$   & $x := e$      & (assignment) \\
         % & $|$   & $s_1 ; s_2$   & (sequence) \\
-        & $|$   & $\mathrm{if} ~ ep ~ \mathrm{then} ~ idx$ & (conditional) \\ %s_1 ~ \mathrm{else} ~ s_2$ & (conditional) \\
+        & $|$   & $\mathrm{if} ~ ep ~ \mathrm{then} ~ idx$ & (conditional) \\
+& $|$ & $\mathrm{store(dst, off, src)}$ & (Memory store operation) \\
 \end{tabular}    
 \end{figure}
 
@@ -93,6 +97,7 @@ Instructions of FWeBPF are defined by the grammar
 A program is a 0-indexed vector of instructions $\mathcal{P}$, st. the index corresponds to the line number of the instruction $n$ minus 1, i.e. $\mathcal{P}_0$ corresponds to the first instruction of the program, $\mathcal{P}_1$ to the second and so on.
 
 \subsubsection{Translating eBPF to FWeBPF}
+The translation from eBPF assembly mnemonics to Featherweight eBPF are essentially rewrite rules. They can be seen in \ref{fig:translation}.
 
 \begin{figure}[H]
   \centering
@@ -106,18 +111,13 @@ A program is a 0-indexed vector of instructions $\mathcal{P}$, st. the index cor
     $\mathrm{xor} ~ r_d, src$ & $=$ & $r_d := r_d ~ \mathrm{xor} ~ src$ \\            
     $\mathrm{jeq ~ r_d, src, +off}$ & $=$ & $\mathrm{if} ~ (r_d = src) ~ \mathrm{then} ~ \mathrm{off}$ \\
     $\mathrm{jneq ~ r_d, src, +off}$ & $=$ & $\mathrm{if} ~ (r_d \neq src) ~ \mathrm{then} ~ \mathrm{off}$ \\
-    $\mathrm{jge ~ r_d, src, +off}$ & $=$ & $\mathrm{if} ~ (r_d \geq src) ~ \mathrm{then} ~ \mathrm{off}$    \\    
-\end{tabular}
+    $\mathrm{jge ~ r_d, src, +off}$ & $=$ & $\mathrm{if} ~ (r_d \geq src) ~ \mathrm{then} ~ \mathrm{off}$    \\
+    $\mathrm{jlt ~ r_d, src, +off}$ & $=$ & $\mathrm{if} ~ (r_d < src) ~ \mathrm{then} ~ \mathrm{off}$    \\
+    $\mathrm{jle ~ r_d, src, +off}$ & $=$ & $\mathrm{if} ~ (r_d \leq src) ~ \mathrm{then} ~ \mathrm{off}$    \\    
+    $\mathrm{ldxdw ~ r_d, [src + \mathrm{off}]}$ & $=$ & $r_d := \mathrm{load(src, off)}$ \\
+    $\mathrm{stxdw ~ [r_d + off], src}$ & $=$ & $\mathrm{store(dst, off, src)}$ \\    
+  \end{tabular}
+  \caption{Translating eBPF assembly to Featherweight eBPF}
+\label{fig:translation}
 \end{figure}
-
-% \begin{figure}[H]
-%   \centering
-%   \begin{tabular}{rcl}
-%     \textbf{eBPF assembly} & & \textbf{FWeBPF} \\
-%     T(\texttt{exit} : $prog)$ & $=$ & \texttt{exit} \\
-%     T($\mathrm{mov} ~ r_d, src : prog$ ) & $=$ & $r_d := src ; T(prog)$ \\
-%     T($\mathrm{div} ~ r_d, r_s : prog$) & $=$ & $r_d := r_d \oslash r_s ; T(prog)$ \\
-%     T($\mathrm{jeq ~ r_d, r_s, +off} : prog$) & $=$ & $\mathrm{if} ~ (r_d = r_s) ~ \mathrm{then} ~ T(prog[\mathrm{off}..]) ~ \mathrm{else} ~ T(prog)$ \\
-% \end{tabular}    
-% \end{figure}
 

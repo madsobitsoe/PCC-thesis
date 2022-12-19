@@ -119,10 +119,10 @@ main =
               Right prog -> do
                 -- putStrLn "Here we should verify!"
                 -- print prog
-                sizemap <- cCreateMap 8 4 1
+                sizemap <- cCreateMapWithConstant64 1 64 --8 4 1
                 ctxmap <- cCreateMap 64 4 1
-                res <- verify_barebone $ comparisonSetup sizemap ctxmap prog
-                case res of 
+                verified <- verify_barebone $ comparisonSetup sizemap ctxmap prog
+                case verified of 
                   False -> putStrLn "Fail: Did not verify!"
                   True -> putStrLn "Success: Did verify!"
 

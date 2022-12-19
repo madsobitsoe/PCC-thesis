@@ -5,6 +5,11 @@
 
 As compared to allowing pointer arithmetic.
 
+\subsubsection*{Alignment of memory operations}
+
+I have decided to require 8-byte alignment of all memory operations. This is not a strict requirement of eBPF, but depends on two things, whether the running kernel configuration has the flag \texttt{CONFIG\_EFFICIENT\_UNALIGNED\_ACCESS} set and the settings of the flags \texttt{BPF\_F\_STRICT\_ALIGNMENT} and \texttt{BPF\_F\_ANY\_ALIGNMENT} on the program supplied when the \texttt{BPF\_PROG\_LOAD} command given as argument to the \texttt{bpf} syscall.
+I require 8-byte alignment since I only support 64-bit operations and all memory operations be they load or store will access 8 bytes. Essentially the requirement is natural alignment st. when accessing $n$ bytes, the base address must be a multiplum of $n$. 
+
 \subsubsection*{No loops}
 
 

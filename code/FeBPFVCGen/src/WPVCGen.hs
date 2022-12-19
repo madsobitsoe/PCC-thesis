@@ -17,6 +17,7 @@ ppPrim (PImm imm) = show imm
 ppE :: Expression -> String
 ppE (EPrim prim) = ppPrim prim
 ppE (EAdd p1 p2) = ppPrim p1 ++ " + " ++ ppPrim p2
+ppE (ESub p1 p2) = ppPrim p1 ++ " - " ++ ppPrim p2
 ppE (EMul p1 p2) = ppPrim p1 ++ " * " ++ ppPrim p2
 ppE (EDiv p1 p2) = ppPrim p1 ++ " / " ++ ppPrim p2
 ppE (EXor p1 p2) = ppPrim p1 ++ " ^ " ++ ppPrim p2
@@ -61,6 +62,7 @@ ppE_smt (EPrim prim) = ppPrim_smt prim
 -- ppE_smt (EVar s) = s
 -- ppE_smt (EImm imm) = toHex imm
 ppE_smt (EAdd p1 p2) = "(bvadd "  ++ ppPrim_smt p1 ++ " " ++ ppPrim_smt p2 ++ ")"
+ppE_smt (ESub p1 p2) = "(bvsub "  ++ ppPrim_smt p1 ++ " " ++ ppPrim_smt p2 ++ ")"
 ppE_smt (EMul p1 p2) = "(bvmul "  ++ ppPrim_smt p1 ++ " " ++ ppPrim_smt p2 ++ ")"
 ppE_smt (EDiv p1 p2) = "(bvudiv " ++ ppPrim_smt p1 ++ " " ++ ppPrim_smt p2 ++ ")"
 ppE_smt (EXor p1 p2) = "(bvxor "  ++ ppPrim_smt p1 ++ " " ++ ppPrim_smt p2 ++ ")"
@@ -105,6 +107,7 @@ varsInExpression :: Expression -> [VName]
 varsInExpression (EPrim prim) = varsInPrimitive prim
 -- varsInExpression (EVar v) = [EVar v]
 varsInExpression (EAdd p1 p2) = varsInPrimitive p1 ++ varsInPrimitive p2
+varsInExpression (ESub p1 p2) = varsInPrimitive p1 ++ varsInPrimitive p2
 varsInExpression (EMul p1 p2) = varsInPrimitive p1 ++ varsInPrimitive p2
 varsInExpression (EDiv p1 p2) = varsInPrimitive p1 ++ varsInPrimitive p2
 varsInExpression (EXor p1 p2) = varsInPrimitive p1 ++ varsInPrimitive p2
@@ -193,12 +196,19 @@ wp_inst prog idx q =
           ep = (PEP (EPEq (PVar v) (EDiv p1 p2)))
           notZeroAssert = PEP (EPNeq p2 (EPrim (PImm 0)))
       in PAll v (PAnd notZeroAssert (PImplies ep q'sub))
+    Assign x (EMod p1 p2) ->
+      let q' = wp_inst prog (idx+1) q
+          v = freshVar q'
+          q'sub = substitute_in_predicate (PVar x) (PVar v) q'
+          ep = (PEP (EPEq (PVar v) (EMod p1 p2)))
+          notZeroAssert = PEP (EPNeq p2 (EPrim (PImm 0)))
+      in PAll v (PAnd notZeroAssert (PImplies ep q'sub))
     Assign x (ELoad (Mem _ (Just sz)) p) ->
       let q' = wp_inst prog (idx+1) q
           v = freshVar q'
           v' = freshVar (PAll v q')
           q'sub = substitute_in_predicate (PVar x) (PVar v) q'
-          inboundsAssert = PAnd (PEP (EPGTE p (EPrim (PImm 0)))) (PEP (EPLT p (EPrim sz)))
+          inboundsAssert = PAnd (PEP (EPGTE p (EPrim (PImm 0)))) (PEP (EPLTE p (ESub sz (PImm 8))))
           alignedAssert = PEP (EPEq (PImm 0) (EMod p (PImm 8)))
           newAss = PEP (EPEq (PVar v) (EPrim (PVar v')))
       in PAll v (PAll v' (PAnd (PAnd inboundsAssert alignedAssert) (PImplies newAss q'sub)))
@@ -212,8 +222,11 @@ wp_inst prog idx q =
       PITE ep (wp_inst prog (idx + 1 + offset) q) (wp_inst prog (idx+1) q)
     Store (Mem _ (Just sz)) offset elm ->
       let q' = wp_inst prog (idx+1) q
-          inboundsAssert = PAnd (PEP (EPGTE offset (EPrim (PImm 0)))) (PEP (EPLT offset (EPrim sz)))
-      in PAnd inboundsAssert q'
+          -- inboundsAssert = PAnd (PEP (EPGTE offset (EPrim (PImm 0)))) (PEP (EPLT offset (EPrim sz)))
+      -- in PAnd inboundsAssert q'
+          inboundsAssert = PAnd (PEP (EPGTE offset (EPrim (PImm 0)))) (PEP (EPLTE offset (ESub sz (PImm 8))))
+          alignedAssert = PEP (EPEq (PImm 0) (EMod offset (PImm 8)))
+      in PAnd (PAnd inboundsAssert alignedAssert) q'
             
 -- wp_prog :: A.Program -> Predicate
 wp_prog :: A.Program -> Either String Predicate
@@ -249,6 +262,16 @@ toFWProg' (A.Binary A.B64 A.Add rd (Left rs)) =
       rs' = reg2var rs
   in Assign v (EAdd (PVar v) rs')
 
+toFWProg' (A.Binary A.B64 A.Sub rd (Right imm)) =
+  let (PVar v) = reg2var rd 
+      imm' = PImm (fromIntegral imm)
+  in Assign v (ESub (PVar v) imm')
+
+toFWProg' (A.Binary A.B64 A.Sub rd (Left rs)) =
+  let (PVar v) = reg2var rd 
+      rs' = reg2var rs
+  in Assign v (ESub (PVar v) rs')
+
 toFWProg' (A.Binary A.B64 A.Mul rd (Right imm)) =
   let (PVar v) = reg2var rd 
       imm' = PImm (fromIntegral imm)
@@ -279,6 +302,17 @@ toFWProg' (A.Binary A.B64 A.Div rd (Left rs)) =
   let (PVar v) = reg2var rd 
       rs' = reg2var rs
   in Assign v (EDiv (PVar v) rs')
+
+toFWProg' (A.Binary A.B64 A.Mod rd (Right imm)) =
+  let (PVar v) = reg2var rd 
+      imm' = PImm (fromIntegral imm)
+  in Assign v (EMod (PVar v) imm')
+
+toFWProg' (A.Binary A.B64 A.Mod rd (Left rs)) =
+  let (PVar v) = reg2var rd 
+      rs' = reg2var rs
+  in Assign v (EMod (PVar v) rs')
+  
 
 -- Conditionals
 toFWProg' (A.JCond A.Jeq rd (Right imm) off) =
