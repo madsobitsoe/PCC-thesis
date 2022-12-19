@@ -108,6 +108,7 @@ The translation from eBPF assembly mnemonics to Featherweight eBPF are essential
     $\mathrm{add} ~ r_d, src$ & $=$ & $r_d := r_d \oplus src$ \\
     $\mathrm{mul} ~ r_d, src$ & $=$ & $r_d := r_d \otimes src$ \\        
     $\mathrm{div} ~ r_d, src$ & $=$ & $r_d := r_d \oslash src$ \\
+    $\mathrm{mod} ~ r_d, src$ & $=$ & $r_d := r_d ~ \mathrm{mod} ~ src$ \\
     $\mathrm{xor} ~ r_d, src$ & $=$ & $r_d := r_d ~ \mathrm{xor} ~ src$ \\            
     $\mathrm{jeq ~ r_d, src, +off}$ & $=$ & $\mathrm{if} ~ (r_d = src) ~ \mathrm{then} ~ \mathrm{off}$ \\
     $\mathrm{jneq ~ r_d, src, +off}$ & $=$ & $\mathrm{if} ~ (r_d \neq src) ~ \mathrm{then} ~ \mathrm{off}$ \\

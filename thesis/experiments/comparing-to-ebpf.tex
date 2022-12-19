@@ -35,7 +35,9 @@ In all experiments the constant $n$ is set to 64, meaning $r1$ will contain a po
   
   The header, written using ebpf-tools, can be seen in listing \ref{snip:compare-header}.
 
-  \begin{figure}[ht!]
+The actual verification, i.e. creation of the two maps, compiling the eBPF assembly to eBPF bytecode and calling the \texttt{bpf} syscall with the \texttt{BPF\_PROG\_LOAD} command is handled using the \texttt{EbpfFFI} haskell module as detailed in section \ref{sec:implementation}.
+  
+  \begin{figure}[!htb]
     \centering
 \inputminted[linenos]{haskell}{snippets/compare-header.hs}
     \caption{The header that is prepended to Featherweight eBPF programs before attempting to verify them using the in-kernel verifier.}

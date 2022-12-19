@@ -10,6 +10,12 @@ As compared to allowing pointer arithmetic.
 I have decided to require 8-byte alignment of all memory operations. This is not a strict requirement of eBPF, but depends on two things, whether the running kernel configuration has the flag \texttt{CONFIG\_EFFICIENT\_UNALIGNED\_ACCESS} set and the settings of the flags \texttt{BPF\_F\_STRICT\_ALIGNMENT} and \texttt{BPF\_F\_ANY\_ALIGNMENT} on the program supplied when the \texttt{BPF\_PROG\_LOAD} command given as argument to the \texttt{bpf} syscall.
 I require 8-byte alignment since I only support 64-bit operations and all memory operations be they load or store will access 8 bytes. Essentially the requirement is natural alignment st. when accessing $n$ bytes, the base address must be a multiplum of $n$. 
 
-\subsubsection*{No loops}
+\subsubsection*{Memory is forgetful}
 
+The given memory context for a program is seen as a shared memory area, similar to an eBPF array map. Memory accesses are therefore forgetful by design, as the shared access means we can not guarantee that the values we store will be the same if we load them at a later point in a program.
+
+The stack is not properly modelled in Featherweight eBPF, but if it were, it would be a good idea to model the stack in a non-forgetful way. 
+
+\subsubsection*{No loops}
+eBPF \textit{does} support loops, however with many restrictions. Allowing loops in the Featherweight eBPF and thus in the WP computation, would require adding annotations to eBPF (assembly) before the translation to Featherweight eBPF st. instructions could be marked as part of a loop body, and loop invariants could be supplied by the code producer. The current design of Featherweight eBPF aims to be a one-to-one representation of eBPF or as close to that as can be, meaning the \textit{addition} of syntax and constructs is intentionally avoided. 
 

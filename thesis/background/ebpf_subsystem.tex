@@ -164,8 +164,8 @@ In kernel space however, a successful lookup returns a pointer to the beginning 
 
 
 \subsubsection{eBPF Verifier - actions and guarantees}
-Will cover learning objective ``Explain the functionality of the eBPF verifier and what it guarantees''.
-Will cover learning objective ``Analyze and identify problems related to untrusted code (and sandboxing?)''
+% Will cover learning objective ``Explain the functionality of the eBPF verifier and what it guarantees''.
+% Will cover learning objective ``Analyze and identify problems related to untrusted code (and sandboxing?)''
 
 % \subsubsection*{eBPF Verifier and rules for eBPF programs}
 
@@ -182,7 +182,7 @@ The first stage of the verifier checks that a given eBPF program
 \item is not larger than the constant \texttt{BPF\_MAXINSNS}.
 \end{itemize}
 
-The second stage of the verifier asserts that the given eBPF program behaves according to the rest of the safety rules. These include, but are not limited to:
+The second stage of the verifier asserts that the given eBPF program behaves according to the rest of the safety\footnote{In most cases security, not safety, according to my definition in subsection \ref{subsec:safety_policies}} rules. These include, but are not limited to:
 \begin{itemize}
 \item Reads are only allowed from initialized registers and initialized parts of the stack. 
 \item Memory R/W instructions are only performed with valid pointers. This is checked wrt. both bounds and alignment.

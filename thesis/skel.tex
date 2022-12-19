@@ -15,6 +15,14 @@
 \usepackage{tabularx}
 \usepackage{stmaryrd}
 \usepackage{bussproofs}
+\usepackage{placeins}
+\let\Oldsection\section
+\renewcommand{\section}{\FloatBarrier\Oldsection}
+\let\Oldsubsection\subsection
+\renewcommand{\subsection}{\FloatBarrier\Oldsubsection}
+\let\Oldsubsubsection\subsubsection
+\renewcommand{\subsubsection}{\FloatBarrier\Oldsubsubsection}
+
 \graphicspath{{images/}}
 \pgfplotsset{compat=1.13}
 

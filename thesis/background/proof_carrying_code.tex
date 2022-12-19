@@ -15,10 +15,17 @@ Code consumer vs. code producer.
 
 \subsubsection{Safety Policies}
 \label{subsec:safety_policies}
-\begin{itemize}
-\item Examples of safety policies
-\item safety vs. security
-\end{itemize}
+
+In Proof Carrying Code a safety policy is a definition of properties that needs to be proved about a program, in order to consider the program safe. An example of such a policy is ``no division by zero'', which would require that for all divisions in the program, a proof that the divisor can not be 0 at runtime. Another example of a safety policy is bounds-checking, i.e. that all memory accesses are in-bounds. This safety policy can take many forms depending on the language, but in general requires the memory size(s) to be known at the time of proof generation, or at least be available during runtime st. a proof of proper runtime bounds-checking can be generated. 
+
+
+\textit{Safety} policies differ from \textit{security} policies. Examples of security policies are e.g. ensuring no use of uninitialised registers, ensuring a program has no unreachable paths, ensuring a program does not leak kernel pointers to user space, no type mismatches etc. In this project I only explicitly care about safety policies, though some hints of security policies inevitably sneaks in. 
+
+
+% \begin{itemize}
+% \item Examples of safety policies
+% \item safety vs. security
+% \end{itemize}
 % \begin{itemize}
 % \item No divide by zero. (Not in the verifier)
 % \item Memory safety for stack reads and writes.
