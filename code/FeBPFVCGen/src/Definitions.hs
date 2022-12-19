@@ -28,6 +28,7 @@ data Expression =
   | EMul Primitive Primitive
   | EDiv Primitive Primitive
   | EXor Primitive Primitive
+  | EMod Primitive Primitive
   | ELoad Mem Primitive
   deriving (Eq, Show)
 

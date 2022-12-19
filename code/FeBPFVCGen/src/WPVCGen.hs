@@ -20,6 +20,7 @@ ppE (EAdd p1 p2) = ppPrim p1 ++ " + " ++ ppPrim p2
 ppE (EMul p1 p2) = ppPrim p1 ++ " * " ++ ppPrim p2
 ppE (EDiv p1 p2) = ppPrim p1 ++ " / " ++ ppPrim p2
 ppE (EXor p1 p2) = ppPrim p1 ++ " ^ " ++ ppPrim p2
+ppE (EMod p1 p2) = ppPrim p1 ++ " % " ++ ppPrim p2
 
 -- Pretty printing of expression predicates
 ppEP :: ExpressionPredicate -> String
@@ -63,6 +64,7 @@ ppE_smt (EAdd p1 p2) = "(bvadd "  ++ ppPrim_smt p1 ++ " " ++ ppPrim_smt p2 ++ ")
 ppE_smt (EMul p1 p2) = "(bvmul "  ++ ppPrim_smt p1 ++ " " ++ ppPrim_smt p2 ++ ")"
 ppE_smt (EDiv p1 p2) = "(bvudiv " ++ ppPrim_smt p1 ++ " " ++ ppPrim_smt p2 ++ ")"
 ppE_smt (EXor p1 p2) = "(bvxor "  ++ ppPrim_smt p1 ++ " " ++ ppPrim_smt p2 ++ ")"
+ppE_smt (EMod p1 p2) = "(bvurem "  ++ ppPrim_smt p1 ++ " " ++ ppPrim_smt p2 ++ ")"
 
 -- Pretty print expression predicate to smtlib2 format
 ppEP_smt :: ExpressionPredicate -> String
@@ -106,6 +108,7 @@ varsInExpression (EAdd p1 p2) = varsInPrimitive p1 ++ varsInPrimitive p2
 varsInExpression (EMul p1 p2) = varsInPrimitive p1 ++ varsInPrimitive p2
 varsInExpression (EDiv p1 p2) = varsInPrimitive p1 ++ varsInPrimitive p2
 varsInExpression (EXor p1 p2) = varsInPrimitive p1 ++ varsInPrimitive p2
+varsInExpression (EMod p1 p2) = varsInPrimitive p1 ++ varsInPrimitive p2
 
 -- Extract used variables from expression predicate
 varsInExpressionPredicate :: ExpressionPredicate -> [VName]
@@ -136,6 +139,7 @@ substitute_in_expression old new (EAdd p1 p2) = EAdd (substitute_in_primitive ol
 substitute_in_expression old new (EMul p1 p2) = EMul (substitute_in_primitive old new p1) (substitute_in_primitive old new p2)
 substitute_in_expression old new (EDiv p1 p2) = EDiv (substitute_in_primitive old new p1) (substitute_in_primitive old new p2)
 substitute_in_expression old new (EXor p1 p2) = EXor (substitute_in_primitive old new p1) (substitute_in_primitive old new p2)
+substitute_in_expression old new (EMod p1 p2) = EMod (substitute_in_primitive old new p1) (substitute_in_primitive old new p2)
 substitute_in_expression _ _ e = e
 
 substitute_in_expression_predicate :: Primitive -> Primitive ->  ExpressionPredicate -> ExpressionPredicate
@@ -170,7 +174,7 @@ withInitialPre prog =
   case wp_prog prog of
     Left err -> Left err
     Right pred ->
-      Right $ PAll "n" (PImplies (PEP (EPGTE (PVar "n") (EPrim (PImm 1)))) (substitute_in_predicate (PVar "r2") (PVar "n") pred ))
+      Right $ PAll "n" (PImplies (PEP (EPGTE (PVar "n") (EPrim (PImm 8)))) (substitute_in_predicate (PVar "r2") (PVar "n") pred ))
 
 wp_inst :: FWProgram -> Index -> Predicate -> Predicate
 wp_inst prog idx q =
@@ -195,8 +199,9 @@ wp_inst prog idx q =
           v' = freshVar (PAll v q')
           q'sub = substitute_in_predicate (PVar x) (PVar v) q'
           inboundsAssert = PAnd (PEP (EPGTE p (EPrim (PImm 0)))) (PEP (EPLT p (EPrim sz)))
+          alignedAssert = PEP (EPEq (PImm 0) (EMod p (PImm 8)))
           newAss = PEP (EPEq (PVar v) (EPrim (PVar v')))
-      in PAll v (PAll v' (PAnd inboundsAssert (PImplies newAss q'sub)))
+      in PAll v (PAll v' (PAnd (PAnd inboundsAssert alignedAssert) (PImplies newAss q'sub)))
     Assign x e ->
       let  q' = wp_inst prog (idx+1) q
            v = freshVar q'
