@@ -28,6 +28,7 @@ dependencies:
 - optparse-applicative
 - pretty-simple
 - process
+- bytestring
 ghc-options:
 - -Wall
 - -Wcompat
@@ -41,7 +42,7 @@ ghc-options:
 
 library:
   source-dirs: src
-
+  c-sources: src/lib_ebpf_qc.c
 executables:
   FeBPFVCGen-exe:
     main:                Main.hs
@@ -53,6 +54,7 @@ executables:
     dependencies:
     - FeBPFVCGen
     - smtLib
+
 tests:
   FeBPFVCGen-test:
     main:                Spec.hs

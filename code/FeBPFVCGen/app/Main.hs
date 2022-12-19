@@ -9,10 +9,13 @@ import ExamplePrograms
 import Options.Applicative
 import System.Process
 
+import EbpfFFI
+
 data Tool = VCGen
           | Default
           | GetProof
           | Debug
+          | VerifyEBPF
   deriving Show
           
 data Options = Options { tool :: Tool
@@ -40,6 +43,10 @@ options = info (opts <**> helper)
            flag' GetProof (long "get-proof"
                            <> short 'p'
                            <> help "Parse asm file, generate VC and call cvc5-Linux to obtain a proof in lfsc format. Requires cvc5-Linux to be installed.")
+           <|>
+           flag' VerifyEBPF (long "verify"
+                            <> short 'e'
+                            <> help "Load the program using the eBPF subsystem and report whether it verifies" )
            <|>
            flag' Debug (long "debug"
                         <> short 'q'
@@ -102,6 +109,23 @@ main =
               Left err -> print err
               Right prog -> do
                 run prog
+      VerifyEBPF -> do
+        case infile of
+          Nothing -> error "No inputfile to parse"
+          Just file -> do
+            res <- parseFromFile file
+            case res of
+              Left err -> print err
+              Right prog -> do
+                -- putStrLn "Here we should verify!"
+                -- print prog
+                sizemap <- cCreateMap 8 4 1
+                ctxmap <- cCreateMap 64 4 1
+                res <- verify_barebone $ comparisonSetup sizemap ctxmap prog
+                case res of 
+                  False -> putStrLn "Fail: Did not verify!"
+                  True -> putStrLn "Success: Did verify!"
+
       -- This is a bad and very hacky way to call cvc5
       -- Basically just a wrapper for a bash command that will only work on linux
       -- and only if cvc5-Linux is in PATH
