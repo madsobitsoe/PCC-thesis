@@ -14,7 +14,7 @@
 \label{subsec:definitions}
 
 The defined data types in the Haskell implementation are very similar to the definitions in section \ref{subsub:fw}. They can be seen in figure \ref{snip:def1} and \ref{snip:def2}.
-One thing that immediately differs is the \texttt{Mem} datatype which is not part of the definitions in section \ref{subsub:fw}. This will be explained in section \ref{subsec:type_checking}. 
+One thing that immediately differs is the \texttt{Mem} datatype which is not part of the definitions in section \ref{subsub:fw}. This will be explained in section \ref{subsec:parsing_and_translation}. 
 
 \begin{figure}[ht]
   \centering
@@ -30,20 +30,108 @@ One thing that immediately differs is the \texttt{Mem} datatype which is not par
   \label{snip:def2}
 \end{figure}
 
+\subsection{Parsing and Translation}
+\label{subsec:parsing_and_translation}
+The implementation uses the brilliant \texttt{eBPF Tools}\cite{ebpf-tools} library to parse eBPF assembly programs into the data types that \texttt{eBPF Tools} uses to represent eBPF programs.
+This is then further converted into the Featherweight eBPF data types seen in figure \ref{snip:def2}.
+The translation is in most cases straight forward and similar to the translation scheme in figure \ref{fig:translation}. A very shortened version showcasing the general structure of the translation can be seen in figure \ref{snip:toFWProg}. In the case of \texttt{ldxdw} and \texttt{stxdw} instructions an oddity needs explanation: If a \texttt{ldxdw} instruction uses either \texttt{r1} or \texttt{r10} as the source operand we \textit{know} the (symbolic) size of it , likewise if a \texttt{stxdw} instruction uses either \texttt{r1} or \texttt{r10} as the destination operand. In these cases we construct a \texttt{Mem} that includes that size.
+However, since the translation is done as a map over every instruction in the program, in all other cases we do not necessarily know the size, or even if the register contains a pointer at this point in the program. We therefore initialize a \texttt{Mem} with \texttt{Nothing} representing the memory size and postpone dealing with it until we perform type checking later. 
+
+\begin{figure}[ht]
+  \centering
+\inputminted[linenos]{haskell}{snippets/toFWProg.hs}
+  \caption{A shortened version of the translation from \texttt{eBPF Tools} Ebpf.Asm data to Featherweight eBPF data types. }
+  \label{snip:toFWProg}
+\end{figure}
+
+
 
 \subsection{Type Checking}
 \label{subsec:type_checking}
+Although the safety policies defined in section \ref{subsec:safety_policies_for_featherweight_ebpf} does not include the \textit{security} policy of ensuring type safety, it needs to be handled in the implementation. The definition of Featherweight eBPF does not allow pointer arithmetic and does not allow reading from or writing to scalar values. This effectively means that in any program only two pointers can exist; the \textit{frame pointer} in register \texttt{r10} and the \texttt{ctx} pointer passed to the program in register \texttt{r1}. Both of these pointers have an attached size, the \textit{frame pointer} pointing to the end of a 512 byte area and the \texttt{ctx} pointer pointing to a memory area of size $n$, where $n$ is a symbolic value, $n \geq 8$.
+
+The rules for WP computation in figure \ref{fig:wp-rules} do not include any concept of types and assumes a program only reads from the pointer passed in register \texttt{r1} - or a copy of that pointer.
+Whenever we perform a memory operation, we need to know the size of the memory area in order to generate the verification condition. Furthermore, to ensure we do not generate a verification condition for a program that performs pointer arithmetic of any kind, or uses a scalar value or uninitialized register as a pointer, we introduce a very simple type system. The haskell definitions for the type system can be seen in figure \ref{snip:types}.
+
+\begin{figure}[ht]
+  \centering
+\inputminted[linenos]{haskell}{snippets/types.hs}
+  \caption{The haskell definitions for the simple type system and initial type environment used in Featherweight eBPF}
+  \label{snip:types}
+\end{figure}
 
 
+The type system only allows for three different types. The type of a register at any given point in a program is either unknown, i.e. an uninitialized register, known to be a scalar value, i.e. \texttt{int64}, or known to be a pointer with a size.
+
+The types for the functions that make up the type checking system can be seen in figure \ref{snip:typecheck}.
+
+\begin{figure}[ht]
+  \centering
+\inputminted[linenos,breaklines]{haskell}{snippets/typecheck.hs}
+  \caption{The types for the functions that make up the type checking system.}
+  \label{snip:typecheck}
+\end{figure}
+
+
+
+The actual type checking is a done via symbolic execution. It starts at the first instruction, checks that each instruction does not violate the few type restrictions of the system and passes along an updated type environment in a recursive call that type checks the next instruction to be executed.
+The system is admittedly not perfect and in some cases flawed.
+In the case of \texttt{load} expressions and \texttt{store} instructions, we might not have a size for the memory. In this case, the type environment is checked and should contain the size (either $n$ or $512$). The program is then updated by substituting the size-less instruction with a size-containing one.
+
+However, in the case of branching via conditionals, two recursive calls will be performed, both of which will possibly replace (an) instruction(s) in the program. Of the two, possibly differing, resulting programs, only one will be kept and used for verification condition generation.
+I have not constructed an example that showcases this, but I am (almost) certain it is possible. 
+
+On successful type checking a program updated with memory sizes where there were \texttt{Nothing} before is returned. 
 
 
 \subsection{Generating verification conditions}
 \label{subsec:generating_verification_conditions}
+The weakest precondition verification condition generation is essentially a straight implementation of figure \ref{fig:wp-rules}.
 
+The types for the main functions used for weakest precondition verification condition generation can be seen in figure \ref{snip:wp_prog_overview}.
+
+\begin{figure}[ht]
+  \centering
+\inputminted[linenos,breaklines]{haskell}{snippets/wp_prog_overview.hs}
+  \caption{The main functions used for weakest precondition verification condition generation.}
+  \label{snip:wp_prog_overview}
+\end{figure}
+
+Whenever we have to generate a forall predicate, we need a way to introduce a fresh variable. This is handled by the auxiliary function \texttt{freshVar}, defined as in figure \ref{snip:fresh-var}. While not the most efficient implementation, it gets the job done.
+
+\begin{figure}[ht]
+  \centering
+\inputminted[linenos]{haskell}{snippets/fresh-var.hs}
+  \caption{The auxiliary function \texttt{freshVar} that given a predicate returns a variable name not used in the predicate.}
+  \label{snip:fresh-var}
+\end{figure}
+
+
+The meat of the code is the function \texttt{wp\_inst}, seen in an abbreviated version in figure \ref{snip:wp_inst}, with the other functions serving as either auxiliary functions or wrapper functions. The function starts at the first instruction of the program and, except for the \texttt{exit} case, recursively generates the predicate for \textit{the rest} of the program. Once this has been generated, the fitting rule from figure \ref{fig:wp-rules} is followed to first perform any required substitutions and second extend the predicate.
+
+\begin{figure}[ht]
+  \centering
+\inputminted[linenos,breaklines]{haskell}{snippets/wp_inst.hs}
+  \caption{An abbreviated version of the \texttt{wp\_inst} function.}
+  \label{snip:wp_inst}
+\end{figure}
+
+
+
+The purpose of the two functions \texttt{wp\_prog} and \texttt{withInitialPre} is to wrap the type checking and verification condition generation in an easy to use interface, while also propagating any (expected) errors that might have occured. They can be seen in figure \ref{snip:wp_prog_wrap}.
+
+\begin{figure}[ht]
+  \centering
+\inputminted[linenos,breaklines]{haskell}{snippets/wp_prog_wrap.hs}
+  \caption{The two functions that wrap the verification condition generation in an easy to use interface.}
+  \label{snip:wp_prog_wrap}
+\end{figure}
 
 
 \subsection{Generating SMT-LIB}
 \label{subsec:generating_smt-lib}
+
+
 
 \subsection{Attaching the in-kernel verifier}
 \label{subsec:attaching_the_in-kernel_verifier}
