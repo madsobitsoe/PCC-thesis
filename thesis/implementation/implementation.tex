@@ -131,11 +131,20 @@ The purpose of the two functions \texttt{wp\_prog} and \texttt{withInitialPre} i
 \subsection{Generating SMT-LIB}
 \label{subsec:generating_smt-lib}
 
+Since the SMT-LIB language has a LISP-like syntax and that the unsigned 64-bit values and operations in Featherweight eBPF translate directly to the FixedSizeBitVector theory, generating SMT-LIB output amounts to writing a pretty printer for predicates, along with a short wrapper function to pre- and append SMTLIB boilerplate.
+
 
 
 \subsection{Attaching the in-kernel verifier}
 \label{subsec:attaching_the_in-kernel_verifier}
 
+In order to facilitate easier experimentation, I decided to include and use a library which I initially wrote for a previous project\cite{ebpf-fuzz} and which has later been extended as part of ongoing research wrt. eBPF, but with a different focus than this project.
+
+The library consists of a short C-library containing a series of wrapper-functions around the \texttt{bpf}-syscall and bindings for Haskell using the foreign function interface.
+It consists of the files \verb!EbpfFFI.hs!, \verb!lib_ebpf_qc.h!, \verb!lib_ebpf_qc.c! and \verb!bpf_insn.h!.
+Although I have written most of it, it has not been a direct product of this project.
+
+Including it allows for an easy way to create the experimental setup detailed in section \ref{subsec:comparing_featherweight_ebpf_and_ebpf}.
 
 
 

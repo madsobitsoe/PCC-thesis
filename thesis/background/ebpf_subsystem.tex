@@ -198,10 +198,7 @@ After successful verification, the verifier patches some instructions, for examp
 The verifier is called indirectly by giving the \verb!BPF_PROG_LOAD! command to the \verb!bpf! syscall. 
 If a program passes through the verifier and is deemed safe after potential rewrites, the program is loaded and a file descriptor for the program is returned, which can in turn be used to attach the program to for example a socket. 
 
-
-% \subsubsection*{Triggering Programs}
-
-\subsubsection*{Writing eBPF programs}
+\subsubsection{Writing eBPF programs}
 The eBPF subsystem of the Linux kernel loads eBPF programs in the form of eBPF bytecode. As writing raw bytecode is not a specifically user friendly or comfortable experience, several higher level abstractions exist for writing eBPF programs. 
 
 The \texttt{clang} compiler from LLVM includes a bpf target, allowing a programmer to write eBPF programs in a pseudo-C-like language and compile it to eBPF bytecode.
@@ -210,8 +207,9 @@ Other projects like \texttt{bcc}\cite{gh:bcc} and \texttt{bpftrace}\cite{gh:bpft
 Another option is to use C-macros such as those supplied with the linux kernel\footnote{In \texttt{samples/bpf/bpf\_insn.h}}, which defines a DSL through C preprocessor macros that allows a programmer to write eBPF programs in an assembly-like language.
 
 Yet another option is the Haskell library \texttt{eBPF Tools}\cite{ebpf-tools} that allows a programmer to write eBPF programs in Haskell and compile the programs to eBPF bytecode.  
+\texttt{eBPF Tools} also includes an assembly-parser, which is what I have mainly used in this project. 
 
- 
+
 
 % \paragraph{Bounded loops}
 % Bounded loops are allowed, but with two main conditions:
