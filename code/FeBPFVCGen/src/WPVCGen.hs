@@ -172,7 +172,6 @@ substitute_in_predicate old new (PITE ep p1 p2) =
 
 -- Generate VC for a program and prepend the initial guarantees `Pre`
 withInitialPre :: A.Program -> Either String Predicate
--- withInitialPre prog = PAll "n" (PImplies (PEP (EPGTE (PVar "n") (EPrim (PImm 1)))) (substitute_in_predicate (PVar "r2") (PVar "n") $ wp_prog prog))
 withInitialPre prog =
   case wp_prog prog of
     Left err -> Left err
@@ -222,13 +221,11 @@ wp_inst prog idx q =
       PITE ep (wp_inst prog (idx + 1 + offset) q) (wp_inst prog (idx+1) q)
     Store (Mem _ (Just sz)) offset elm ->
       let q' = wp_inst prog (idx+1) q
-          -- inboundsAssert = PAnd (PEP (EPGTE offset (EPrim (PImm 0)))) (PEP (EPLT offset (EPrim sz)))
-      -- in PAnd inboundsAssert q'
           inboundsAssert = PAnd (PEP (EPGTE offset (EPrim (PImm 0)))) (PEP (EPLTE offset (ESub sz (PImm 8))))
           alignedAssert = PEP (EPEq (PImm 0) (EMod offset (PImm 8)))
       in PAnd (PAnd inboundsAssert alignedAssert) q'
             
--- wp_prog :: A.Program -> Predicate
+
 wp_prog :: A.Program -> Either String Predicate
 wp_prog prog =
   case typeCheck (toFWProg prog) of
@@ -459,8 +456,10 @@ getExpType e env =
     --         TInt64 -> Right t
     --         _ -> Left $ show t ++ " not allowed as index in load operation. Index must be int64"
     EAdd p1 p2 -> doIt p1 p2
+    ESub p1 p2 -> doIt p1 p2
     EMul p1 p2 -> doIt p1 p2
     EDiv p1 p2 -> doIt p1 p2
+    EMod p1 p2 -> doIt p1 p2        
     EXor p1 p2 -> doIt p1 p2
   where
     doIt p1 p2 =
