@@ -1,9 +1,14 @@
 \section{Future work}
 \label{sec:future_work}
 
+
+
 \begin{itemize}
 \item Extending Featherweight eBPF to cover all instructions in eBPF, including 8-, 16- and 32-bit operations, both signed and unsigned. 
 \item Extending Featherweight eBPF memory operations to support the stack.
 \item Extending Featherweight eBPF memory operations to include pointer arithmetic. (Pointer-scalar arithmetic, not pointer-pointer.)
 \item Extending Featherweight eBPF to support kernel-helper functions.
+\item Defining safety policies that correspond to the safety rules of the in-kernel verifier.
+\item Implementing a proof checker that runs in the Linux kernel, e.g. based on the LFSC proof checker \texttt{lfscc}.
+\item Extending the \texttt{bpf} syscall to support using the proof checker.
 \end{itemize}

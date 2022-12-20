@@ -1,20 +1,50 @@
-\subsection{PCC Architecture}
+\subsection{Proof Carrying Code Architecture}
 \label{subsec:pcc_architecture}
 
+The Proof Carrying Code architecture consists of multiple parts:
+
+
 \begin{itemize}
-    \item "Design of my dreams with kernel-impl."  
-    \item "MVT design" with most happening in user space, i.e. proof-checking before loading eBPF program.  
+\item Featherweight eBPF Weakest Precondition Verification Condition Generator
+\item The CVC5 SMT Theorem Prover\cite{gh:cvc5}
+\item The LFSC proof certificate checker \texttt{lfscc}\cite{gh:lfsc}
 \end{itemize}
 
+When the code producer has written a Featherweight eBPF program, they can generate a verification condition for the program using the \texttt{FWeBPFVCGen}. This will result in a program in SMT-LIB2 format, that represents the verification condition for the program in a standardised format accepted by most SMT solvers.
+This can in turn be given to the CVC5 SMT Theorem Prover, which will yield a proof, given that the program does not violate the safety policies, with the caveat that not all problems are solvable using SMT and CVC5 might give up.
+The proof will be output in the LFSC-format using the extension \texttt{.plf}.
+This proof can in turn be given to the LFSC proof certificate checker \texttt{lfscc}, along with the theories needed for the proof. If the proof is valid, \texttt{lfscc} will output \verb!success! and the program does not violate the safety policies. 
 
 
 
-\subsubsection*{Draft diagram of PCC Architecture}
+
+\subsubsection{Shortcomings of the architecture}
+
+While the architecture works fine as a proof of concept and is sufficient to support the work done in this project, it is far from ideal and has many shortcomings.
+
+First of all, the entire process of verification condition generation, proof-generation and proof checking happens in user space. Ideally the proof checking should be performed by the code consumer, i.e. in kernel space, before rejecting or accepting a program. 
+
+The next immediate shortcoming is the multitude of file formats in use. The current pipeline of file formats is $$\mathrm{Assembly} \rightarrow \mathrm{SMTLIB2} \rightarrow \mathrm{LFSC}$$. 
+
+The perhaps gravest shortcoming is that the ``tamper-proof'' property of Proof Carrying Code is lost.
+The LFSC proof checker only accepts proofs in \texttt{LFSC} format, and CVC5 only accepts programs in \texttt{SMTLIB2} format, while outputting proofs in \texttt{LFSC} format. The proofs include an encoding of the verification condition, so the verification condition and the proof for it are not decoupled as they should be.
+
+\subsubsection{Proposal for a future architecture}
+
+A solution to the shortcomings listed in the previous section can roughly be sketched out as figure \ref{fig:pcc-architecture}.
+
+Realising this architecture would require a way of decoupling the verification conditions from the proofs as well as significant work in embedding a proof checker in the Linux kernel. This proof checker could for instance be a derivative of \texttt{lfscc}.
+
+
+
+
+
+% \subsubsection*{Draft diagram of PCC Architecture}
 
 \begin{figure}[htbp!]
   \centering
 \inputminted{text}{figures/pcc-architecture.txt}
-  \caption{First draft of PCC Architecture}
+  \caption{A proposal for a design of a PCC Architecture for eBPF}
   \label{fig:pcc-architecture}
 \end{figure}
 

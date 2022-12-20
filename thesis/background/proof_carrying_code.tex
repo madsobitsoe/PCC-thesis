@@ -1,14 +1,30 @@
 \subsection{Proof Carrying Code}
 \label{subsec:proof_carrying_code}
 
-Will cover learning objective ``Explain what Proof Carrying Code is and explain the architecture behind''.
+Proof Carrying Code was pioneered by George Necula and Peter Lee in, amongst others, the papers \cite{kernel-ext-necula} and \cite{pcc-necula}. 
+The main idea behind, is to guarantee various safety and security properties, by specifying safety policies of which a program must abide, and a formalised and standardised way of proving a program abides by the safety policies. This is typically done by specifying \textit{verification conditions} as well as a way to generate verification conditions from a program.
 
-\begin{itemize}
-\item 
-Code consumer vs. code producer.
-\item VC and VCGen
-  \item Architecture with VCGen ensures proof is tamper-proof, as VC are extracted by proof checker.
-\end{itemize}
+The general PCC architecture deals with the concepts of code \textit{producers} and code \textit{consumers}.
+
+In the case of eBPF, the code consumer is the Linux kernel that has to consume the code, i.e. trust the code is safe and execute it. The code producer is the programmer that writes an eBPF program and wishes to execute it in kernel space.
+
+The PCC architecture requires the code producer to, along with the program they wish to have executed, supply a proof that the generated verification conditions from their program, does not violate the safety policies.
+The code consumer can then
+\begin{enumerate}
+\item Generate verification conditions for the supplied program.
+  \item Check that the supplied proof is a proof of the verification conditions not violating the safety policies. 
+\end{enumerate}
+
+This has two major benefits from the perspective of the code consumer. For one, the consumer can confidently execute the code\footnote{Given the code consumer trusts that the safety policies are adequate.}, and since the code producer only supplies a proof, and the code consumer can generate the verification conditions and check the proof against them, that if the proof is a valid proof, it does not matter if the supplied program is the actual program the producer supplied a proof for. This makes the general PCC architecture ``tamper proof'', by decoupling the proofs from the programs and relating them to the verification conditions instead.  
+
+% Will cover learning objective ``Explain what Proof Carrying Code is and explain the architecture behind''.
+
+% \begin{itemize}
+% \item 
+% Code consumer vs. code producer.
+% \item VC and VCGen
+%   \item Architecture with VCGen ensures proof is tamper-proof, as VC are extracted by proof checker.
+% \end{itemize}
 
 
 

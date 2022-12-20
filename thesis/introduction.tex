@@ -1,6 +1,15 @@
 \section{Introduction}
 \label{sec:introduction}
 
+The Extended Berkeley Packet Filters (eBPF) subsystem of the Linux kernel allows a user to load eBPF bytecode programs into the Linux kernel during runtime and have them executed. eBPF is a powerful subsystem with many interesting use cases, e.g. packet filtering on both sockets and the Express Data Path (XDP) avoiding most of the Linux network stack to achieve less overhead and higher speed, and tracing, monitoring and filtering through access to kernel probes and the perf subsystem. It has been adopted as \texttt{uBPF} for use on non-linux systems and is rapidly becoming unavoidable.
+
+A major historic problem of the eBPF subsystem is the eBPF verifier, which has to perform static analysis of programs and reject unsafe programs before they are loaded into the kernel. The verifier has been the cause of many critical security bugs in the Linux kernel, including but by no means limited to \cite{manfred:ebpf}, \cite{manfred:ebpf2}, and \cite{scannell:fuzz}.
+
+Proof Carrying Code is an interesting concept that assigns the responsibility of guaranteeing a program's safety to the code producer, by letting the code consumer publicise one or more safety policies and requiring the code producer to provide a proof of adherence to the safety policies along with a program in order to execute it.
+
+In this report I present my efforts in designing a proof of concept proof carrying code architecture for eBPF.
+
+
 \subsection{Contributions}
 \label{subsec:contributions}
 
@@ -9,4 +18,8 @@
 \item A prototype implementation of a verification condition generator for Featherweight eBPF.
 \item A small collection of synthetic programs for Featherweight eBPF.
 \item A small framework for comparing the capabalities of weakest precondition verification condition generation for Featherweight eBPF in conjunction with the CVC5 SMT theorem prover and the LFSC proof checker to those of the in-kernel eBPF verifier.
+\item A proof of concept PCC architecture for Featherweight eBPF.
+\item A rough sketch-proposal for a PCC architecture for eBPF.
 \end{itemize}
+
+The code is available online at \url{https://github.com/madsobitsoe/PCC-thesis/}. The commit that represents the codebase at the time of handin is tagged as \texttt{handin}.

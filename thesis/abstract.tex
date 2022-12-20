@@ -1,5 +1,8 @@
-\section*{Abstract}
-It seems like a great idea to have an abstract.
-Before ToC? Who knows.
+\begin{abstract}
+  eBPF is a subsystem of the Linux kernel that allows for loading programs from user space and into the Linux kernel during runtime, to be executed in kernel space. eBPF is rapidly being adopted and used. There is however a severe security risk connected with running essentially untrusted programs in the kernel - a risk that is currently mitigated, but not nullified, by the in-kernel eBPF verifier.
+  Proof Carrying Code is a concept that shifts the responsibility of guaranteeing the safety of a program from the code consumer to the code producer, by specifying one or more safety policies by which a program must abide and requiring the code producer to provide a proof alongside their program, that proves the program does not violate the safety policies.
+  In this report I present Featherweight eBPF, a small IMP-like language representing a subset of eBPF, a set of safety policies for it, a weakest precondition verification condition generator for Featherweight eBPF programs and an accompanying proof of concept proof carrying code architecture. Finally I conduct a series of experiments comparing the capabilities of my implementation to that of the in-kernel eBPF verifier. 
 
 
+\end{abstract}
+\newpage

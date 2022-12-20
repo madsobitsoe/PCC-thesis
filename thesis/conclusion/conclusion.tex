@@ -1,3 +1,10 @@
 \section{Conclusion}
 \label{sec:conclusion}
 
+I have designed Featherweight eBPF, an IMP-like language that covers a small subset of the eBPF ISA, and a small but valuable set of safety policies for it. I have also written a proof of concept weakest precondition verification condition generator for Featherweight eBPF and designed a small framework for comparing the capabilities of the proof carrying code architecture to that of the current in-kernel verifier for eBPF.
+I have constructed a small program collection that exercises most of the capabilities of the verification generator and the accompanying safety policies.
+
+I have shown that it is possible to prove the safety of simple eBPF programs, exceeding the capabilities of the in-kernel verifier in some cases. 
+Although some design decisions such as the choice not to allow pointer arithmetic turned out to be a major impediment for the expressiveness of programs and thus experiments, my assessment of Featherweight eBPF and the verification condition generator based on the experiments, is that there is a lot of room for improvements, but a promising foundation on which to continue working towards proof carrying code for eBPF. 
+
+

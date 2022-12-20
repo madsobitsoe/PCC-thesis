@@ -1,8 +1,29 @@
 \section{Evaluation}
 \label{sec:Evaluation}
-\begin{itemize}
-  \item Can we prove all (synthetic) programs the verifier verifies safe?
-  \item Can we prove more?  
-  \item Is the proof-generation easy or a hassle for the programmer?  
-\end{itemize}
+
+The experiments in section \ref{sec:experiments} do not show any unexpected or surprising results.
+The most prominent safety policy exercised in the program collection is no division by 0. The in-kernel eBPF verifier has a peculiar behaviour in this case, as is it patches instructions that can potentially perform a division by zero to include a run-time check of the operand, such that if the divisor is in fact 0, the division (or modulo) instruction will be skipped entirely. This means that the in-kernel verifier ``allows'' division by 0 and that the carefully crafted programs that exercise this safety policy are expected to pass through the in-kernel verifier without problems.
+
+The perhaps most interesting result is that of the program \ref{prog:xor_jump}. The in-kernel verifier rejects this program as expected, since it violates a safety rule of the in-kernel verifier in that the unreachable branch divides \texttt{r3} with an immediate constant $0$. If this instruction is replaced with e.g. \texttt{mov r4, 0; div r2, r4}, the in-kernel verifier will still reject the program, because the following \texttt{exit} instruction will leak a kernel pointer through register \texttt{r0}. This is due to the prepended header to simulate the restrictions of Featherweight eBPF. If those restrictions were not present, the in-kernel verifier would reject the program because register \texttt{r0} is never initialised in the unreachable branch.
+
+It is however interesting that we can prove the branch is never taken and thus that the division by 0 will never happen. The in-kernel verifier throws away all range-tracking for destination registers in the \texttt{xor} operation and thus has no way of knowing the branch is unreachable.
+
+It would be interesting to extend Featherweight eBPF and the program collection with more ``hard to range-track'' operations, e.g. bitshifts, bitwise AND and OR operations and adding 32-bit operations as well. It seems to be an area where SMT-solving has a clear advantage over the current implementation of the verifier. 
+
+My design choice about disallowing pointer-arithmetic turned out to be a major impediment in the experiments.
+When memory accesses can only be performed with constant offsets and not as a result of ALU operations as is possible in eBPF, the amount of interesting programs that it is possible to write, especially in a language without loops, rapidly dwindles.
+In order to support kernel helper functions in the future, pointer arithmetic would need to be allowed, as many of the kernel helpers take \textit{pointers} as argument, and the only way to create a pointer in eBPF is to store a value on the stack, copy the \textit{frame pointer} and offset it st. it points to the value. 
+
+
+
+
+A very pleasant result from the experiments is that the proof-generation has turned out to be easy and hassle-free for the code producer. One of the design goals of Featherweight eBPF was to avoid extending the syntax of eBPF by adding e.g. annotations, in order to make it as comparable to ``real'' eBPF as possible and harnessing the power of proof carrying code with as little overhead for the code producer as possible. In all the experiments I have only written the assembly code shown in the program collection, and the Featherweight eBPF Weakest Precondition Verification Condition Generator, CVC5 and \texttt{lfscc} has taken care of everything.
+I suspect that extensions of Featherweight eBPF to cover all (or most) of eBPF, as well as extending the VCGen to include all the safety and security rules of the eBPF verifier, might introduce some overhead for the code producer if the idea is pursued further. 
+
+
+% \begin{itemize}
+%   \item Can we prove all (synthetic) programs the verifier verifies safe?
+%   \item Can we prove more?  
+%   \item Is the proof-generation easy or a hassle for the programmer?  
+% \end{itemize}
 

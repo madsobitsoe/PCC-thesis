@@ -128,10 +128,23 @@ The purpose of the two functions \texttt{wp\_prog} and \texttt{withInitialPre} i
 \end{figure}
 
 
-\subsection{Generating SMT-LIB}
+\subsection{Generating SMT-LIB from predicates}
 \label{subsec:generating_smt-lib}
 
 Since the SMT-LIB language has a LISP-like syntax and that the unsigned 64-bit values and operations in Featherweight eBPF translate directly to the FixedSizeBitVector theory, generating SMT-LIB output amounts to writing a pretty printer for predicates, along with a short wrapper function to pre- and append SMTLIB boilerplate.
+
+We want to give the generated verification condition to an SMT solver in order to obtain a proof. As an SMT solver tries to find a \textit{satisfiable} assignment to a formula and we are interested in having \textit{valid} formulas/verification conditions, we negate the verification condition and ask for an assignment that satisfies it.
+If the negated verification condition is unsatisfiable, the non-negated verification condition is valid. When CVC5 concludes a formula is unsatisfiable, it will produce a proof of unsatisfiability, which is exactly what we want.
+
+The boiler-plate that sets up various flags for CVC5, negates the verification condition and asks CVC5 to find a satisfying assignment can be seen in figure \ref{snip:smtboiler}.
+
+
+\begin{figure}[ht]
+  \centering
+\inputminted[linenos,breaklines]{lisp}{snippets/smtboiler.smt2}
+  \caption{The smt2 boiler plate that all generated verification conditions are wrapped in.}
+  \label{snip:smtboiler}
+\end{figure}
 
 
 
