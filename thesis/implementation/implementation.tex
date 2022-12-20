@@ -1,13 +1,57 @@
-\section{Implementation}
+\section{FeBPFVCGen - A PoC implementation in Haskell}
 \label{sec:implementation}
 
-Will cover learning objective ``Modify and extend the linux kernel, in particular the eBPF subsystem.''
-\newline
-Will cover learning objective ``Write C-code for the linux kernel adhering to current guidelines and standards.'
+% Will cover learning objective ``Modify and extend the linux kernel, in particular the eBPF subsystem.''
+% \newline
+% Will cover learning objective ``Write C-code for the linux kernel adhering to current guidelines and standards.'
 
-\begin{itemize}
-\item FeBPF VCGen. (Probably something about CVC5 IO-format)
-\item PCC Arch  (Probably only the "MVT design")
-\end{itemize}
+% \begin{itemize}
+% \item FeBPF VCGen. (Probably something about CVC5 IO-format)
+% \item PCC Arch  (Probably only the "MVT design")
+% \end{itemize}
+
+\subsection{Definitions}
+\label{subsec:definitions}
+
+The defined data types in the Haskell implementation are very similar to the definitions in section \ref{subsub:fw}. They can be seen in figure \ref{snip:def1} and \ref{snip:def2}.
+One thing that immediately differs is the \texttt{Mem} datatype which is not part of the definitions in section \ref{subsub:fw}. This will be explained in section \ref{subsec:type_checking}. 
+
+\begin{figure}[ht]
+  \centering
+\inputminted[linenos]{haskell}{snippets/def1.hs}
+  \caption{The data types defined for representing primitives, expressions, expression predicates and instructions of Featherweight eBPF in Haskell.}
+  \label{snip:def1}
+\end{figure}
+
+\begin{figure}[ht]
+  \centering
+\inputminted[linenos]{haskell}{snippets/def2.hs}
+  \caption{The data types defined for representing predicates of Featherweight eBPF in Haskell.}
+  \label{snip:def2}
+\end{figure}
+
+
+\subsection{Type Checking}
+\label{subsec:type_checking}
+
+
+
+
+\subsection{Generating verification conditions}
+\label{subsec:generating_verification_conditions}
+
+
+
+\subsection{Generating SMT-LIB}
+\label{subsec:generating_smt-lib}
+
+\subsection{Attaching the in-kernel verifier}
+\label{subsec:attaching_the_in-kernel_verifier}
+
+
+
+
+
+
 
 

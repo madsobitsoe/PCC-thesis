@@ -12,24 +12,17 @@ data Primitive =
   | PImm Word32
   deriving (Eq, Show)
 
--- data Mem = Mem VName Primitive
---   deriving (Eq, Show)
-
--- data Mem2 p = Mem2 VName p
---   deriving (Eq, Show)
-
-
 data Mem = Mem VName (Maybe Primitive)
   deriving (Eq, Show)
 
 data Expression =
     EPrim Primitive
-  | EAdd Primitive Primitive
-  | ESub Primitive Primitive
-  | EMul Primitive Primitive
-  | EDiv Primitive Primitive
-  | EXor Primitive Primitive
-  | EMod Primitive Primitive
+  | EAdd  Primitive Primitive
+  | ESub  Primitive Primitive
+  | EMul  Primitive Primitive
+  | EDiv  Primitive Primitive
+  | EXor  Primitive Primitive
+  | EMod  Primitive Primitive
   | ELoad Mem Primitive
   deriving (Eq, Show)
 
@@ -39,13 +32,12 @@ data ExpressionPredicate =
   | EPNeq Primitive Expression
   | EPGTE Primitive Expression
   | EPLTE Primitive Expression
-  | EPLT Primitive Expression
+  | EPLT  Primitive Expression
   deriving (Eq, Show)
 
 data Predicate =
     PEP ExpressionPredicate
   | PNot Predicate
-    -- \all v . v = e => Q[x <- v]
   | PAll VName Predicate
   | PAnd Predicate Predicate
   | PImplies Predicate Predicate
@@ -58,7 +50,6 @@ type FWProgram = Vector Instr
 data Instr =
     Assign VName Expression
   | Cond ExpressionPredicate Index
-  -- | Jmp Index -- Currently no uncond jumps, but hopefully later
   | Store Mem Primitive Primitive
   | Exit
   deriving (Eq, Show)

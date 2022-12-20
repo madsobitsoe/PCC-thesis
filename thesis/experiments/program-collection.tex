@@ -13,16 +13,16 @@
 In Table \ref{tbl:program-collection} an overview of the programs included in the program collection can be found. The program collection constitute the entire ``test suite'' for comparing Featherweight eBPF to the in-kernel eBPF verifier.
 
 \begin{table}[!ht]
-\begin{tabularx}{\textwidth}{|>{\hsize=.6\hsize}X|>{\hsize=.65\hsize}X|>{\hsize=1.4\hsize}X|>{\hsize=.85\hsize}X|>{\hsize=1.5\hsize}X|X|} \hline
-  \textbf{Program name} & \textbf{Reference} & \textbf{Relevance} & \textbf{Verifies with eBPF verifier} & \textbf{CVC5 can prove it} & \textbf{Relevant safety policies} \\ \hline
-  Exit immediately & \ref{prog:justexit} & Sanity check. The shortest possible program that can be verified in eBPF. & \checkmark  & \checkmark & None \\ \hline  
-  Potential Division By Zero & \ref{prog:bad_div} & This program contains two divisions. The result of the first division in line 2 might be 0. The result is then used as divisor in line 3. & \checkmark & CVC5 can prove it violates the safety policy as the last division might use 0 as a divisor. CVC5 can find a satisfying assignment for the VC generated, meaning the program violates the safety policy. & No divide by zero \\ \hline
-  Trivial Safe Division & \ref{prog:good_div} & In line 2 register \texttt{r1} is set to the value 2. \texttt{r1} is then used as divisor. As $2 \neq 0$, this division is trivially safe. & \checkmark & \checkmark & No division by zero \\ \hline
-  Safe Division By Means Of Precondition & \ref{prog:good_div_pre} & In line 2 register \texttt{r2} is used as divisor. As the precondition for all programs states that $r2 \geq 8$ this division is safe. & \checkmark & \checkmark & No division by zero \\ \hline
+\begin{tabularx}{\textwidth}{|>{\hsize=1.25\hsize}X|>{\hsize=.75\hsize}X|>{\hsize=.75\hsize}X|>{\hsize=1\hsize}X|>{\hsize=1\hsize}X|>{\hsize=1.25\hsize}X|} \hline
+  \textbf{Program name} & \textbf{Reference} & \textbf{Is it safe?} & \textbf{Verifies with eBPF verifier} & \textbf{CVC5 can prove it safe} & \textbf{Relevant safety policies} \\ \hline
+  Exit immediately & \ref{prog:justexit} & \checkmark & \checkmark  & \checkmark & None \\ \hline  
+  Potential Division By Zero & \ref{prog:bad_div} & No. & \checkmark & No & No divide by zero \\ \hline
+  Trivial Safe Division & \ref{prog:good_div} & \checkmark & \checkmark & \checkmark & No division by zero \\ \hline
+  Safe Division By Means Of Precondition & \ref{prog:good_div_pre} & \checkmark & \checkmark & \checkmark & No division by zero \\ \hline
 
   % XOR Initialisation & \ref{prog:xor_init} & ? & ? & ? & Safe use of uninitialised registers  \\ \hline
-  Maybe Load And Sum Four 8-Byte chunks & \ref{prog:load4times_safe} & The program starts with a conditional jump based on the memory size. If it is possible to read 4 consecutive 8-byte chunks from memory, the program will sum those chunks. & \checkmark & \checkmark & Memory safety for context reads. \\ \hline
-Xor Leads To Unconditional Jump & \ref{prog:xor_jump} & The program uses an \texttt{xor} operation to ensure a register is 0, after which a conditional jump is based on that register being 0. In the non-zero case, the program will perform a divison by zero and violate a safety policy, then exit without initialising \texttt{r0}, violating an eBPF requirement. & The program is rejected. The in-kernel verifier does not know the conditional jump will always be taken.  & \checkmark & No division by zero. \\ \hline  
+  Maybe Load And Sum Four 8-Byte chunks & \ref{prog:load4times_safe} & \checkmark & \checkmark & \checkmark & Memory safety for context reads. \\ \hline
+Xor Leads To Unconditional Jump & \ref{prog:xor_jump} & \checkmark & No.  & \checkmark & No division by zero. \\ \hline  
 \end{tabularx}
 \caption{An overview of the programs in the program collection, their relevance and what safety policies they showcase.}
 \label{tbl:program-collection}
@@ -30,21 +30,29 @@ Xor Leads To Unconditional Jump & \ref{prog:xor_jump} & The program uses an \tex
 
 \subsubsection{Exit immediately}
 \label{prog:justexit}
+This program is included mainly as a sanity check. It is the shortest possible program that can be verified in eBPF.
+
 \inputminted[linenos]{asm}{programs/justexit.asm}
 
 \subsubsection{Potential Division By Zero}
 \label{prog:bad_div}
 
+This program contains two divisions. The result of the first division in line 2 might be 0. The result is then used as divisor in line 3.
+The in-kernel verifier allows the program to run, as potential division by 0 is patched with a runtime conditional jump in eBPF. Given the generated verification condition, CVC5 can find a satisfying assignment, meaning we can prove division by 0 might happen and reject the program as it violates the safety policy. 
 \inputminted[linenos]{asm}{programs/bad_div.asm}
 
 
 \subsubsection{Trivial Safe Division}
 \label{prog:good_div}
 
+In line 2 register \texttt{r1} is set to the value 2. \texttt{r1} is then used as divisor. As $2 \neq 0$, this division is trivially safe.
+
 \inputminted[linenos]{asm}{programs/good_div.asm}
 
 \subsubsection{Safe Division by means of preconditions}
 \label{prog:good_div_pre}
+
+In line 2 register \texttt{r2} is used as divisor. As the precondition for all programs states that $r2 \geq 8$ this division is safe.
 
 \inputminted[linenos]{asm}{programs/good_div_pre.asm}
 
@@ -52,11 +60,18 @@ Xor Leads To Unconditional Jump & \ref{prog:xor_jump} & The program uses an \tex
 \subsubsection{Maybe Load And Sum Four 8-byte Chunks}
 \label{prog:load4times_safe}
 
+The program starts with a conditional jump based on the memory size. If it is possible to read 4 consecutive 8-byte chunks from memory, the program will sum those chunks. If it is not possible, the program simply exits without reading memory. 
+
 \inputminted[linenos]{asm}{programs/load4times_safe.asm}
 
 
 \subsubsection{Xor leads to unconditional jump}
 \label{prog:xor_jump}
+This program is admittedly a contrived example, designed such that the in-kernel verifier rejects the program while we can prove it safe. 
+The program uses an \texttt{xor} operation to ensure a register is 0, after which a conditional jump is based on that register being 0. In the non-zero case, the program will perform a divison by zero and violate a safety policy, then exit without initialising \texttt{r0}, violating an eBPF requirement.
+The program is rejected by the in-kernel verifier, as it does not know the conditional jump will always be taken.
+
+
 
 \inputminted[linenos]{asm}{programs/xor_jump.asm}
 

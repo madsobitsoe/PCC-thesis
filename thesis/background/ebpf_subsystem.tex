@@ -79,9 +79,6 @@ For this project about proof carrying code, the program type is not relevant. Th
 % \subsubsection{eBPF Machine Model}
 \subsubsection{eBPF ISA}
 
-% \subsubsection*{eBPF instruction set}
-
-
 The eBPF instruction set architecture includes 10 64-bit wide read/write registers \verb!R0! through \verb!R9!, 1 64-bit wide read-only register \verb!R10! containing a frame pointer and an instruction set that can be thought of as a stripped down version of \verb!x86_64!. 
 
 The complete instruction set can be found at \cite{kernel:ebpf-inst} and an unofficial reference for valid eBPF opcodes is available at \cite{ebpf-unoff-spec}.
@@ -116,7 +113,7 @@ Almoste all eBPF instructions are 8 bytes and encoded as seen in Figure \ref{fig
 
 
 
-\subsubsection*{eBPF Maps}
+\subsubsection{eBPF Maps}
 
 eBPF maps are data structures accessible from both kernel space and user space.
 There are several different types of maps available, e.g. stacks, queues, hash-tables and arrays.
